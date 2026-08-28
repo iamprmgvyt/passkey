@@ -396,6 +396,12 @@ class VerifyButtonView(discord.ui.View):
         super().__init__(timeout=None)
         self.bot = bot
         self.guild_id = guild_id
+        if guild_id and bot:
+            guild = bot.get_guild(guild_id)
+            if guild:
+                em = discord.utils.get(guild.emojis, name="pk_passkey") or discord.utils.get(bot.emojis, name="pk_passkey")
+                if em:
+                    self.verify_button.emoji = em
 
     @discord.ui.button(label="Click to Verify", style=discord.ButtonStyle.success, emoji="🔑", custom_id="passkey:btn_verify")
     async def verify_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -412,8 +418,15 @@ class VerifyButtonView(discord.ui.View):
         verified_role = guild.get_role(int(verified_role_id)) if verified_role_id else discord.utils.get(guild.roles, name="Verified")
 
         if verified_role and verified_role in interaction.user.roles:
-            await interaction.response.send_message("✅ You are already verified in this server!", ephemeral=True)
-            return
+            if interaction.user.guild_permissions.administrator:
+                try:
+                    await interaction.user.remove_roles(verified_role, reason="[Passkey Admin Test] Allow re-verification")
+                except Exception:
+                    pass
+            else:
+                verified_emoji = Emojis.get("verified", self.bot, guild)
+                await interaction.response.send_message(f"{verified_emoji} You are already verified in this server!", ephemeral=True)
+                return
 
         mode = config.get("verify_mode", "web").lower()
         lang = config.get("language", "en")
@@ -1361,7 +1374,7 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
     @commands.hybrid_command(name="reset_verifications", aliases=["wipe_verifications", "clear_verifications"])
     @commands.has_permissions(administrator=True)
     async def reset_verifications(self, ctx: commands.Context):
-        """Purge and reset all verification records from the database for this server."""
+        """Purge all verification records from the database and strip @Verified role from all members."""
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
 
@@ -1373,6 +1386,10 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
                         "DELETE FROM verification_logs WHERE guild_id = ?",
                         [guild_id]
                     )
+                    await self.bot.db.turso_client.execute(
+                        "DELETE FROM warnings WHERE guild_id = ?",
+                        [guild_id]
+                    )
                 except Exception as e:
                     log.warning(f"Error resetting Turso verifications: {e}")
 
@@ -1380,17 +1397,40 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
                 def _del():
                     cur = self.bot.db.sqlite_conn.cursor()
                     cur.execute("DELETE FROM verification_logs WHERE guild_id = ?", (guild_id,))
+                    cur.execute("DELETE FROM warnings WHERE guild_id = ?", (guild_id,))
                     self.bot.db.sqlite_conn.commit()
                 import asyncio
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(None, _del)
 
+        # Strip Verified role from all members in the server
+        config = {}
+        if self.bot.db:
+            config = await self.bot.db.get_guild_config(ctx.guild.id)
+
+        verified_role_id = config.get("verified_role_id")
+        verified_role = ctx.guild.get_role(int(verified_role_id)) if verified_role_id else discord.utils.get(ctx.guild.roles, name="Verified")
+
+        stripped_count = 0
+        if verified_role:
+            for member in ctx.guild.members:
+                if verified_role in member.roles:
+                    try:
+                        await member.remove_roles(verified_role, reason="[Passkey] Reset all server verifications")
+                        stripped_count += 1
+                    except Exception:
+                        pass
+
         verified_emoji = Emojis.get("verified", self.bot, ctx.guild)
         shield_emoji = Emojis.get("shield", self.bot, ctx.guild)
 
         embed = discord.Embed(
-            title=f"{verified_emoji} Verification Data Purged",
-            description=f"{shield_emoji} All verification logs and IP/Email fingerprints for **{ctx.guild.name}** have been completely cleared from the database.",
+            title=f"{verified_emoji} Full Server Verification Reset",
+            description=(
+                f"{shield_emoji} **Database Cleared:** Purged all verification logs, warnings, and IP/Email fingerprints for **{ctx.guild.name}**.\n"
+                f"👥 **Roles Stripped:** Removed `{verified_role.name if verified_role else 'Verified'}` from **{stripped_count} member(s)**.\n\n"
+                "✨ All members must now re-verify to regain server access."
+            ),
             color=0x10B981
         )
         if ctx.interaction:
