@@ -260,11 +260,11 @@ class General(commands.Cog, name="General & Utilities"):
     @commands.has_permissions(administrator=True)
     @commands.bot_has_permissions(manage_emojis_and_stickers=True)
     async def sync_emojis_cmd(self, ctx: commands.Context):
-        """Upload all 12 Passkey Custom Neon Emojis into this Discord server."""
+        """Upload and refresh all 12 circular Passkey Custom Neon Emojis in this Discord server."""
         if ctx.interaction:
             await ctx.interaction.response.defer()
 
-        uploaded = await Emojis.ensure_guild_emojis(ctx.guild)
+        uploaded = await Emojis.ensure_guild_emojis(ctx.guild, force_update=True)
         passkey_emoji = Emojis.get("passkey", self.bot, ctx.guild)
         shield_emoji = Emojis.get("shield", self.bot, ctx.guild)
 

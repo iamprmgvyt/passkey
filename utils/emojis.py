@@ -95,7 +95,7 @@ class Emojis:
         return cls.FALLBACKS.get(key, "")
 
     @classmethod
-    async def ensure_guild_emojis(cls, guild: discord.Guild) -> Dict[str, str]:
+    async def ensure_guild_emojis(cls, guild: discord.Guild, force_update: bool = False) -> Dict[str, str]:
         """Automatically upload all 12 Custom Passkey Neon Emojis into guild."""
         if not guild.me.guild_permissions.manage_emojis_and_stickers and not guild.me.guild_permissions.administrator:
             log.warning(f"Bot lacks manage_emojis permission in {guild.name}")
@@ -106,8 +106,14 @@ class Emojis:
 
         for name, file_path in cls.FILE_MAP.items():
             if name in existing:
-                uploaded[name] = str(existing[name])
-                continue
+                if force_update:
+                    try:
+                        await existing[name].delete(reason="[Passkey] Updating to circular frame emoji")
+                    except Exception as e:
+                        log.warning(f"Could not delete old emoji {name}: {e}")
+                else:
+                    uploaded[name] = str(existing[name])
+                    continue
 
             if os.path.exists(file_path):
                 try:
@@ -116,10 +122,10 @@ class Emojis:
                     new_emoji = await guild.create_custom_emoji(
                         name=name,
                         image=img_bytes,
-                        reason="[Passkey Gatekeeper] Auto-upload custom neon emojis pack"
+                        reason="[Passkey Gatekeeper] Upload circular custom neon emojis pack"
                     )
                     uploaded[name] = str(new_emoji)
-                    log.info(f" Successfully uploaded custom emoji {name} to {guild.name}")
+                    log.info(f"Successfully uploaded circular custom emoji {name} to {guild.name}")
                 except Exception as e:
                     log.warning(f"Could not upload emoji {name} to {guild.name}: {e}")
 
