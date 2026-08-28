@@ -314,7 +314,7 @@ class ImageCaptchaChallengeView(discord.ui.View):
         self.guild = guild
         self.code = code
 
-    @discord.ui.button(label="Submit CAPTCHA Code", style=discord.ButtonStyle.primary, emoji="")
+    @discord.ui.button(label="Submit CAPTCHA Code", style=discord.ButtonStyle.primary)
     async def btn_submit(self, interaction: discord.Interaction, button: discord.ui.Button):
         modal = ImageCaptchaModal(self.bot, self.guild, self.code)
         await interaction.response.send_modal(modal)
@@ -405,169 +405,179 @@ class VerifyButtonView(discord.ui.View):
 
     @discord.ui.button(label="Click to Verify", style=discord.ButtonStyle.success, custom_id="passkey:btn_verify")
     async def verify_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        guild = interaction.guild or self.bot.get_guild(self.guild_id)
-        if not guild:
-            await interaction.response.send_message("Server context not found.", ephemeral=True)
-            return
-
-        config = {}
-        if self.bot.db:
-            config = await self.bot.db.get_guild_config(guild.id)
-
-        verified_role_id = config.get("verified_role_id")
-        verified_role = guild.get_role(int(verified_role_id)) if verified_role_id else discord.utils.get(guild.roles, name="Verified")
-
-        if verified_role and verified_role in interaction.user.roles:
-            if interaction.user.guild_permissions.administrator:
-                try:
-                    await interaction.user.remove_roles(verified_role, reason="[Passkey Admin Test] Allow re-verification")
-                except Exception:
-                    pass
-            else:
-                verified_emoji = Emojis.get("verified", self.bot, guild)
-                await interaction.response.send_message(f"{verified_emoji} You are already verified in this server!", ephemeral=True)
+        try:
+            guild = interaction.guild or self.bot.get_guild(self.guild_id)
+            if not guild:
+                await interaction.response.send_message("Server context not found.", ephemeral=True)
                 return
 
-        mode = config.get("verify_mode", "web").lower()
-        lang = config.get("language", "en")
+            config = {}
+            if self.bot.db:
+                config = await self.bot.db.get_guild_config(guild.id)
 
-        # Handle Modal Modes immediately
-        if mode == "captcha":
-            n1 = random.randint(1, 20)
-            n2 = random.randint(1, 20)
-            modal = MathCaptchaModal(self.bot, guild, n1, n2)
-            await interaction.response.send_modal(modal)
-            return
+            verified_role_id = config.get("verified_role_id")
+            verified_role = guild.get_role(int(verified_role_id)) if verified_role_id else discord.utils.get(guild.roles, name="Verified")
 
-        if mode == "rules":
-            modal = ServerRulesModal(self.bot, guild)
-            await interaction.response.send_modal(modal)
-            return
+            if verified_role and verified_role in interaction.user.roles:
+                if interaction.user.guild_permissions.administrator:
+                    try:
+                        await interaction.user.remove_roles(verified_role, reason="[Passkey Admin Test] Allow re-verification")
+                    except Exception:
+                        pass
+                else:
+                    verified_emoji = Emojis.get("verified", self.bot, guild)
+                    await interaction.response.send_message(f"{verified_emoji} You are already verified in this server!", ephemeral=True)
+                    return
 
-        # Defer immediately for all other modes to eliminate timeout risks
-        await interaction.response.defer(ephemeral=True)
+            mode = config.get("verify_mode", "web").lower()
+            lang = config.get("language", "en")
 
-        # 1. Direct Button Mode
-        if mode == "button":
-            success, msg = await grant_verified_role(self.bot, guild, interaction.user, method="button")
-            if success:
-                await interaction.followup.send("Verified successfully! You now have access to the server.", ephemeral=True)
-            else:
-                await interaction.followup.send(f"[Error] {msg}", ephemeral=True)
-            return
+            # Handle Modal Modes immediately
+            if mode == "captcha":
+                n1 = random.randint(1, 20)
+                n2 = random.randint(1, 20)
+                modal = MathCaptchaModal(self.bot, guild, n1, n2)
+                await interaction.response.send_modal(modal)
+                return
 
-        # 2. Image Visual CAPTCHA Mode
-        if mode == "image_captcha":
-            buf, code = generate_image_captcha()
-            file = discord.File(buf, filename="passkey_captcha.png")
-            lock_emoji = Emojis.get("lock", self.bot, guild)
-            embed = discord.Embed(
-                title=f"{lock_emoji} Passkey Visual Security Challenge",
-                description="Please read the 5 characters inside the image below and click **Submit CAPTCHA Code** to answer.",
-                color=0x6366F1
-            )
-            embed.set_image(url="attachment://passkey_captcha.png")
-            embed.set_footer(text="Passkey Zero-Trust Security • 5-Attempt Limit")
-            view = ImageCaptchaChallengeView(self.bot, guild, code)
-            await interaction.followup.send(embed=embed, file=file, view=view, ephemeral=True)
-            return
+            if mode == "rules":
+                modal = ServerRulesModal(self.bot, guild)
+                await interaction.response.send_modal(modal)
+                return
 
-        # 3. Emoji Sequence Pattern Mode
-        if mode == "pattern":
-            passkey_em = Emojis.get("passkey", self.bot, guild) or "P"
-            shield_em = Emojis.get("shield", self.bot, guild) or "S"
-            otp_em = Emojis.get("otp", self.bot, guild) or "O"
-            verified_em = Emojis.get("verified", self.bot, guild) or "V"
-            warn_em = Emojis.get("warn", self.bot, guild) or "W"
-            lock_em = Emojis.get("lock", self.bot, guild) or "L"
-            emojis_pool = [passkey_em, shield_em, otp_em, verified_em, warn_em, lock_em]
-            target_seq = random.sample(emojis_pool, 3)
-            seq_display = " ".join(target_seq)
-            embed = discord.Embed(
-                title=f"{lock_em} Passkey Emoji Pattern Challenge",
-                description=(
-                    f"Please click the buttons below in this **exact sequence**:\n\n"
-                    f"# {seq_display}\n\n"
-                    f"Click each emoji in order. One mistake will reset the attempt."
-                ),
-                color=0x6366F1
-            )
-            view = EmojiSequenceView(self.bot, guild, target_seq, emojis_pool)
-            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-            return
+            # Defer immediately for all other modes to eliminate timeout risks
+            await interaction.response.defer(ephemeral=True)
 
-        # 4. Social Connection Check Mode
-        if mode == "social":
-            social_emoji = Emojis.get("social", self.bot, guild)
-            embed = discord.Embed(
-                title=f"{social_emoji} Passkey Social Account Verification",
-                description=(
-                    f"Hello **{interaction.user.display_name}**,\n\n"
-                    f"This server requires members to have at least **1 connected account** on their Discord profile (e.g. Steam, YouTube, GitHub, Twitter, Spotify, Reddit, etc.).\n\n"
-                    "Click the button below to verify your linked connections:"
-                ),
-                color=0x6366F1
-            )
+            # 1. Direct Button Mode
+            if mode == "button":
+                success, msg = await grant_verified_role(self.bot, guild, interaction.user, method="button")
+                if success:
+                    await interaction.followup.send("Verified successfully! You now have access to the server.", ephemeral=True)
+                else:
+                    await interaction.followup.send(f"[Error] {msg}", ephemeral=True)
+                return
+
+            # 2. Image Visual CAPTCHA Mode
+            if mode == "image_captcha":
+                buf, code = generate_image_captcha()
+                file = discord.File(buf, filename="passkey_captcha.png")
+                lock_emoji = Emojis.get("lock", self.bot, guild)
+                embed = discord.Embed(
+                    title=f"{lock_emoji} Passkey Visual Security Challenge",
+                    description="Please read the 5 characters inside the image below and click **Submit CAPTCHA Code** to answer.",
+                    color=0x6366F1
+                )
+                embed.set_image(url="attachment://passkey_captcha.png")
+                embed.set_footer(text="Passkey Zero-Trust Security • 5-Attempt Limit")
+                view = ImageCaptchaChallengeView(self.bot, guild, code)
+                await interaction.followup.send(embed=embed, file=file, view=view, ephemeral=True)
+                return
+
+            # 3. Emoji Sequence Pattern Mode
+            if mode == "pattern":
+                passkey_em = Emojis.get("passkey", self.bot, guild) or "P"
+                shield_em = Emojis.get("shield", self.bot, guild) or "S"
+                otp_em = Emojis.get("otp", self.bot, guild) or "O"
+                verified_em = Emojis.get("verified", self.bot, guild) or "V"
+                warn_em = Emojis.get("warn", self.bot, guild) or "W"
+                lock_em = Emojis.get("lock", self.bot, guild) or "L"
+                emojis_pool = [passkey_em, shield_em, otp_em, verified_em, warn_em, lock_em]
+                target_seq = random.sample(emojis_pool, 3)
+                seq_display = " ".join(target_seq)
+                embed = discord.Embed(
+                    title=f"{lock_em} Passkey Emoji Pattern Challenge",
+                    description=(
+                        f"Please click the buttons below in this **exact sequence**:\n\n"
+                        f"# {seq_display}\n\n"
+                        f"Click each emoji in order. One mistake will reset the attempt."
+                    ),
+                    color=0x6366F1
+                )
+                view = EmojiSequenceView(self.bot, guild, target_seq, emojis_pool)
+                await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+                return
+
+            # 4. Social Connection Check Mode
+            if mode == "social":
+                social_emoji = Emojis.get("social", self.bot, guild)
+                embed = discord.Embed(
+                    title=f"{social_emoji} Passkey Social Account Verification",
+                    description=(
+                        f"Hello **{interaction.user.display_name}**,\n\n"
+                        f"This server requires members to have at least **1 connected account** on their Discord profile (e.g. Steam, YouTube, GitHub, Twitter, Spotify, Reddit, etc.).\n\n"
+                        "Click the button below to verify your linked connections:"
+                    ),
+                    color=0x6366F1
+                )
+                token = f"pk_{secrets.token_hex(16)}"
+                VERIFY_SESSIONS[token] = {"user_id": interaction.user.id, "guild_id": guild.id, "created_at": time.time()}
+                from utils.config import Config
+                verify_url = f"{Config.DASHBOARD_URL.rstrip('/')}/verify?session={token}"
+                view = discord.ui.View()
+                view.add_item(discord.ui.Button(label="Check Social Connections", url=verify_url, style=discord.ButtonStyle.link))
+                await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+                return
+
+            # 5. Web Portal, Biometric Passkey, or Email Verification Mode
             token = f"pk_{secrets.token_hex(16)}"
-            VERIFY_SESSIONS[token] = {"user_id": interaction.user.id, "guild_id": guild.id, "created_at": time.time()}
+            VERIFY_SESSIONS[token] = {
+                "user_id": interaction.user.id,
+                "guild_id": guild.id,
+                "created_at": time.time()
+            }
+
             from utils.config import Config
-            verify_url = f"{Config.DASHBOARD_URL.rstrip('/')}/verify?session={token}"
-            view = discord.ui.View()
-            view.add_item(discord.ui.Button(label="Check Social Connections", url=verify_url, style=discord.ButtonStyle.link))
-            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-            return
+            base_url = Config.DASHBOARD_URL.rstrip("/")
+            verify_url = f"{base_url}/verify?session={token}"
 
-        # 5. Web Portal, Biometric Passkey, or Email Verification Mode
-        token = f"pk_{secrets.token_hex(16)}"
-        VERIFY_SESSIONS[token] = {
-            "user_id": interaction.user.id,
-            "guild_id": guild.id,
-            "created_at": time.time()
-        }
+            is_email = (mode == "email")
+            is_biometric = (mode == "biometric")
 
-        from utils.config import Config
-        base_url = Config.DASHBOARD_URL.rstrip("/")
-        verify_url = f"{base_url}/verify?session={token}"
+            if is_biometric:
+                biometric_emoji = Emojis.get("biometric", self.bot, guild)
+                title = f"{biometric_emoji} Passkey — Hardware Biometric Verification"
+                desc = (
+                    f"Hello **{interaction.user.display_name}**,\n\n"
+                    f"Click the button below to verify using **Hardware Passkey (Touch ID, Face ID, Windows Hello, or YubiKey)**.\n\n"
+                    f"Session remains active for 10 minutes."
+                )
+                btn_label = "Verify with Biometrics / TouchID"
+            elif is_email:
+                otp_emoji = Emojis.get("otp", self.bot, guild)
+                title = f"{otp_emoji} Passkey — Cổng Xác Thực Email" if lang == "vi" else f"{otp_emoji} Passkey — Email Verification Portal"
+                desc = (
+                    f"Xin chào **{interaction.user.display_name}**,\n\nVui lòng bấm nút bên dưới để mở cổng **Xác thực mã OTP Email** cho server **{guild.name}**.\n\nLưu ý: Nếu không thấy mã trong Hộp thư đến, vui lòng kiểm tra thêm mục **Thư rác / Spam** nhé!"
+                ) if lang == "vi" else (
+                    f"Hello **{interaction.user.display_name}**,\n\nClick the button below to complete **Email OTP Verification** for **{guild.name}**.\n\nNote: If you don't see the code in your inbox, check your **Spam folder**!"
+                )
+                btn_label = "Mở Cổng Xác Thực Email" if lang == "vi" else "Open Email Verification"
+            else:
+                verified_emoji = Emojis.get("verified", self.bot, guild)
+                title = f"{verified_emoji} Passkey — Cổng Xác Thực Người Dùng" if lang == "vi" else f"{verified_emoji} Passkey — Human Verification Portal"
+                desc = (
+                    f"Xin chào **{interaction.user.display_name}**,\n\nVui lòng bấm nút bên dưới để hoàn tất xác thực Cloudflare Turnstile cho **{guild.name}**.\n\nBạn có tối đa 5 lần thử."
+                ) if lang == "vi" else (
+                    f"Hello **{interaction.user.display_name}**,\n\nPlease click the button below to complete Cloudflare Turnstile verification for **{guild.name}**.\n\nYou have up to 5 attempts."
+                )
+                btn_label = "Mở Cổng Xác Thực" if lang == "vi" else "Open Verification Portal"
 
-        is_email = (mode == "email")
-        is_biometric = (mode == "biometric")
+            embed = discord.Embed(title=title, description=desc, color=0x6366F1)
+            embed.set_footer(text="Passkey Gatekeeper • Zero-Trust Verification Network")
+            if guild.icon:
+                embed.set_thumbnail(url=guild.icon.url)
 
-        if is_biometric:
-            biometric_emoji = Emojis.get("biometric", self.bot, guild)
-            title = f"{biometric_emoji} Passkey — Hardware Biometric Verification"
-            desc = (
-                f"Hello **{interaction.user.display_name}**,\n\n"
-                f"Click the button below to verify using **Hardware Passkey (Touch ID, Face ID, Windows Hello, or YubiKey)**.\n\n"
-                f"Session remains active for 10 minutes."
-            )
-            btn_label = "Verify with Biometrics / TouchID"
-        elif is_email:
-            otp_emoji = Emojis.get("otp", self.bot, guild)
-            title = f"{otp_emoji} Passkey — Cổng Xác Thực Email" if lang == "vi" else f"{otp_emoji} Passkey — Email Verification Portal"
-            desc = (
-                f"Xin chào **{interaction.user.display_name}**,\n\nVui lòng bấm nút bên dưới để mở cổng **Xác thực mã OTP Email** cho server **{guild.name}**.\n\nLưu ý: Nếu không thấy mã trong Hộp thư đến, vui lòng kiểm tra thêm mục **Thư rác / Spam** nhé!"
-            ) if lang == "vi" else (
-                f"Hello **{interaction.user.display_name}**,\n\nClick the button below to complete **Email OTP Verification** for **{guild.name}**.\n\nNote: If you don't see the code in your inbox, check your **Spam folder**!"
-            )
-            btn_label = "Mở Cổng Xác Thực Email" if lang == "vi" else "Open Email Verification"
-        else:
-            verified_emoji = Emojis.get("verified", self.bot, guild)
-            title = f"{verified_emoji} Passkey — Cổng Xác Thực Người Dùng" if lang == "vi" else f"{verified_emoji} Passkey — Human Verification Portal"
-            desc = (
-                f"Xin chào **{interaction.user.display_name}**,\n\nVui lòng bấm nút bên dưới để hoàn tất xác thực Cloudflare Turnstile cho **{guild.name}**.\n\nBạn có tối đa 5 lần thử."
-            ) if lang == "vi" else (
-                f"Hello **{interaction.user.display_name}**,\n\nPlease click the button below to complete Cloudflare Turnstile verification for **{guild.name}**.\n\nYou have up to 5 attempts."
-            )
-            btn_label = "Mở Cổng Xác Thực" if lang == "vi" else "Open Verification Portal"
-
-        embed = discord.Embed(title=title, description=desc, color=0x6366F1)
-        embed.set_footer(text="Passkey Gatekeeper • Zero-Trust Verification Network")
-        if guild.icon:
-            embed.set_thumbnail(url=guild.icon.url)
-
-        web_view = discord.ui.View()
-        web_view.add_item(discord.ui.Button(label=btn_label, url=verify_url, style=discord.ButtonStyle.link))
-        await interaction.followup.send(embed=embed, view=web_view, ephemeral=True)
+            web_view = discord.ui.View()
+            web_view.add_item(discord.ui.Button(label=btn_label, url=verify_url, style=discord.ButtonStyle.link))
+            await interaction.followup.send(embed=embed, view=web_view, ephemeral=True)
+        except Exception as e:
+            log.error(f"Error in verify_button: {e}", exc_info=True)
+            try:
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(f"[Error] Failed to start verification: {e}", ephemeral=True)
+                else:
+                    await interaction.followup.send(f"[Error] Failed to start verification: {e}", ephemeral=True)
+            except Exception:
+                pass
 
 
 # --- Multi-Step Interactive Setup Wizard View (5 Steps) ---
@@ -1126,7 +1136,7 @@ class ServerSettingsView(discord.ui.View):
             await self.bot.db.set_guild_config(self.guild.id, "language", lang)
         await self._update_view(interaction)
 
-    @discord.ui.button(label="Spam Shield", style=discord.ButtonStyle.secondary, emoji="", row=2)
+    @discord.ui.button(label="Spam Shield", style=discord.ButtonStyle.secondary, row=2)
     async def btn_spam(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author.id:
             await interaction.response.send_message(" Only the admin who opened settings can toggle this.", ephemeral=True)
@@ -1136,7 +1146,7 @@ class ServerSettingsView(discord.ui.View):
             await self.bot.db.set_guild_config(self.guild.id, "automod_spam", new_val)
         await self._update_view(interaction)
 
-    @discord.ui.button(label="Invite Shield", style=discord.ButtonStyle.secondary, emoji="", row=2)
+    @discord.ui.button(label="Invite Shield", style=discord.ButtonStyle.secondary, row=2)
     async def btn_invite(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author.id:
             await interaction.response.send_message(" Only the admin who opened settings can toggle this.", ephemeral=True)
@@ -1146,7 +1156,7 @@ class ServerSettingsView(discord.ui.View):
             await self.bot.db.set_guild_config(self.guild.id, "automod_invites", new_val)
         await self._update_view(interaction)
 
-    @discord.ui.button(label="Phishing Shield", style=discord.ButtonStyle.secondary, emoji="", row=2)
+    @discord.ui.button(label="Phishing Shield", style=discord.ButtonStyle.secondary, row=2)
     async def btn_phishing(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author.id:
             await interaction.response.send_message(" Only the admin who opened settings can toggle this.", ephemeral=True)
@@ -1156,7 +1166,7 @@ class ServerSettingsView(discord.ui.View):
             await self.bot.db.set_guild_config(self.guild.id, "automod_phishing", new_val)
         await self._update_view(interaction)
 
-    @discord.ui.button(label="Anti-Alt Shield", style=discord.ButtonStyle.secondary, emoji="", row=2)
+    @discord.ui.button(label="Anti-Alt Shield", style=discord.ButtonStyle.secondary, row=2)
     async def btn_alt(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author.id:
             await interaction.response.send_message(" Only the admin who opened settings can toggle this.", ephemeral=True)
@@ -1166,7 +1176,7 @@ class ServerSettingsView(discord.ui.View):
             await self.bot.db.set_guild_config(self.guild.id, "antialt_enabled", new_val)
         await self._update_view(interaction)
 
-    @discord.ui.button(label=" Setup Wizard", style=discord.ButtonStyle.primary, emoji="", row=3)
+    @discord.ui.button(label=" Setup Wizard", style=discord.ButtonStyle.primary, row=3)
     async def btn_wizard(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author.id:
             await interaction.response.send_message(" Only the admin who opened settings can launch the wizard.", ephemeral=True)
@@ -1337,7 +1347,7 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
             embed.set_thumbnail(url=guild.icon.url)
 
         view = discord.ui.View()
-        view.add_item(discord.ui.Button(label="Open Verification Portal", url=verify_url, style=discord.ButtonStyle.link, emoji=""))
+        view.add_item(discord.ui.Button(label="Open Verification Portal", url=verify_url, style=discord.ButtonStyle.link))
         await ctx.send(embed=embed, view=view, ephemeral=True)
 
     @commands.hybrid_command(name="post_verify", aliases=["post-verify", "sendverify", "postverify"])
