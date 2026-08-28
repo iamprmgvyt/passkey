@@ -579,16 +579,25 @@ class VerifyButtonView(discord.ui.View):
 # --- Multi-Step Interactive Setup Wizard View (5 Steps) ---
 
 class MultiStepSetupWizardView(discord.ui.View):
-    def __init__(self, bot, guild: discord.Guild, author: discord.Member):
+    def __init__(self, bot, guild: discord.Guild, author: discord.Member, is_edit: bool = False):
         super().__init__(timeout=300)
         self.bot = bot
         self.guild = guild
         self.author = author
+        self.is_edit = is_edit
 
         self.current_step = 1
         self.total_steps = 5
 
-        # Wizard state
+        # Wizard initial state (previous choices)
+        self.initial_mode = "web"
+        self.initial_lang = "en"
+        self.initial_antialt = "quarantine"
+        self.initial_verify_chan = None
+        self.initial_log_chan = None
+        self.initial_age = 0
+
+        # Current working selections
         self.selected_mode = "web"
         self.selected_lang = "en"
         self.selected_antialt = "quarantine"
@@ -597,6 +606,15 @@ class MultiStepSetupWizardView(discord.ui.View):
         self.selected_age = 0
 
         self._build_step_components()
+
+    def sync_initial_state(self):
+        """Record the initial state to compare old vs new choices."""
+        self.initial_mode = self.selected_mode
+        self.initial_lang = self.selected_lang
+        self.initial_antialt = self.selected_antialt
+        self.initial_verify_chan = self.selected_verify_chan
+        self.initial_log_chan = self.selected_log_chan
+        self.initial_age = self.selected_age
 
     def _build_step_components(self):
         self.clear_items()
@@ -609,15 +627,15 @@ class MultiStepSetupWizardView(discord.ui.View):
                 max_values=1,
                 row=0,
                 options=[
-                    discord.SelectOption(label=" Web Portal (Cloudflare Turnstile)", value="web", description="Browser challenge with Cloudflare Turnstile + Anti-Alt IP", default=(self.selected_mode == "web")),
-                    discord.SelectOption(label=" Biometric Passkey (Touch ID / Face ID)", value="biometric", description="Hardware Passkey WebAuthn biometric verification", default=(self.selected_mode == "biometric")),
-                    discord.SelectOption(label=" Email OTP", value="email", description="Sends 6-digit verification code to member email", default=(self.selected_mode == "email")),
-                    discord.SelectOption(label=" In-Discord Image CAPTCHA", value="image_captcha", description="Distorted security image challenge inside Discord", default=(self.selected_mode == "image_captcha")),
-                    discord.SelectOption(label=" Emoji Sequence Pattern", value="pattern", description="Randomized 3-symbol sequence button matching challenge", default=(self.selected_mode == "pattern")),
-                    discord.SelectOption(label=" Social Connection Check", value="social", description="Requires linked Steam, GitHub, YouTube, Twitter, etc.", default=(self.selected_mode == "social")),
-                    discord.SelectOption(label=" Math CAPTCHA Modal", value="captcha", description="Interactive math challenge pop-up in Discord", default=(self.selected_mode == "captcha")),
-                    discord.SelectOption(label=" Server Rules Quiz", value="rules", description="Requires typing 'I AGREE' to server rules", default=(self.selected_mode == "rules")),
-                    discord.SelectOption(label=" Direct 1-Click Button", value="button", description="Instant verification inside Discord with single click", default=(self.selected_mode == "button")),
+                    discord.SelectOption(label="Web Portal (Cloudflare Turnstile)", value="web", description="Browser challenge with Cloudflare Turnstile + Anti-Alt IP", default=(self.selected_mode == "web")),
+                    discord.SelectOption(label="Biometric Passkey (Touch ID / Face ID)", value="biometric", description="Hardware Passkey WebAuthn biometric verification", default=(self.selected_mode == "biometric")),
+                    discord.SelectOption(label="Email OTP", value="email", description="Sends 6-digit verification code to member email", default=(self.selected_mode == "email")),
+                    discord.SelectOption(label="In-Discord Image CAPTCHA", value="image_captcha", description="Distorted security image challenge inside Discord", default=(self.selected_mode == "image_captcha")),
+                    discord.SelectOption(label="Emoji Sequence Pattern", value="pattern", description="Randomized 3-symbol sequence button matching challenge", default=(self.selected_mode == "pattern")),
+                    discord.SelectOption(label="Social Connection Check", value="social", description="Requires linked Steam, GitHub, YouTube, Twitter, etc.", default=(self.selected_mode == "social")),
+                    discord.SelectOption(label="Math CAPTCHA Modal", value="captcha", description="Interactive math challenge pop-up in Discord", default=(self.selected_mode == "captcha")),
+                    discord.SelectOption(label="Server Rules Quiz", value="rules", description="Requires typing 'I AGREE' to server rules", default=(self.selected_mode == "rules")),
+                    discord.SelectOption(label="Direct 1-Click Button", value="button", description="Instant verification inside Discord with single click", default=(self.selected_mode == "button")),
                 ]
             )
             select.callback = self._on_select_mode
@@ -631,16 +649,16 @@ class MultiStepSetupWizardView(discord.ui.View):
                 max_values=1,
                 row=0,
                 options=[
-                    discord.SelectOption(label=" English", value="en", description="Default system language", default=(self.selected_lang == "en")),
-                    discord.SelectOption(label=" Tiếng Việt", value="vi", description="Giao diện Tiếng Việt", default=(self.selected_lang == "vi")),
-                    discord.SelectOption(label=" 日本語", value="ja", description="Japanese interface", default=(self.selected_lang == "ja")),
-                    discord.SelectOption(label=" 한국어", value="ko", description="Korean interface", default=(self.selected_lang == "ko")),
-                    discord.SelectOption(label=" 简体中文", value="zh", description="Chinese interface", default=(self.selected_lang == "zh")),
-                    discord.SelectOption(label=" Español", value="es", description="Spanish interface", default=(self.selected_lang == "es")),
-                    discord.SelectOption(label=" Français", value="fr", description="French interface", default=(self.selected_lang == "fr")),
-                    discord.SelectOption(label=" Deutsch", value="de", description="German interface", default=(self.selected_lang == "de")),
-                    discord.SelectOption(label=" Русский", value="ru", description="Russian interface", default=(self.selected_lang == "ru")),
-                    discord.SelectOption(label=" Português", value="pt", description="Portuguese interface", default=(self.selected_lang == "pt")),
+                    discord.SelectOption(label="English", value="en", description="Default system language", default=(self.selected_lang == "en")),
+                    discord.SelectOption(label="Tiếng Việt", value="vi", description="Giao diện Tiếng Việt", default=(self.selected_lang == "vi")),
+                    discord.SelectOption(label="日本語", value="ja", description="Japanese interface", default=(self.selected_lang == "ja")),
+                    discord.SelectOption(label="한국어", value="ko", description="Korean interface", default=(self.selected_lang == "ko")),
+                    discord.SelectOption(label="简体中文", value="zh", description="Chinese interface", default=(self.selected_lang == "zh")),
+                    discord.SelectOption(label="Español", value="es", description="Spanish interface", default=(self.selected_lang == "es")),
+                    discord.SelectOption(label="Français", value="fr", description="French interface", default=(self.selected_lang == "fr")),
+                    discord.SelectOption(label="Deutsch", value="de", description="German interface", default=(self.selected_lang == "de")),
+                    discord.SelectOption(label="Русский", value="ru", description="Russian interface", default=(self.selected_lang == "ru")),
+                    discord.SelectOption(label="Português", value="pt", description="Portuguese interface", default=(self.selected_lang == "pt")),
                 ]
             )
             select.callback = self._on_select_lang
@@ -654,11 +672,11 @@ class MultiStepSetupWizardView(discord.ui.View):
                 max_values=1,
                 row=0,
                 options=[
-                    discord.SelectOption(label=" Quarantine Both Accounts", value="quarantine", description="Lock both suspected accounts in @Quarantined for admin review", default=(self.selected_antialt == "quarantine")),
-                    discord.SelectOption(label=" Log & Alert Only", value="log", description="Alert moderators in log channel but allow member to join", default=(self.selected_antialt == "log")),
-                    discord.SelectOption(label=" Auto-Kick New Alt", value="kick", description="Kick the new alternate account immediately", default=(self.selected_antialt == "kick")),
-                    discord.SelectOption(label=" Auto-Ban New Alt", value="ban", description="Ban the new alternate account immediately", default=(self.selected_antialt == "ban")),
-                    discord.SelectOption(label=" Silent / Do Nothing", value="ignore", description="Do not log or take any action on duplicate accounts", default=(self.selected_antialt == "ignore")),
+                    discord.SelectOption(label="Quarantine Both Accounts", value="quarantine", description="Lock both suspected accounts in @Quarantined for admin review", default=(self.selected_antialt == "quarantine")),
+                    discord.SelectOption(label="Log & Alert Only", value="log", description="Alert moderators in log channel but allow member to join", default=(self.selected_antialt == "log")),
+                    discord.SelectOption(label="Auto-Kick New Alt", value="kick", description="Kick the new alternate account immediately", default=(self.selected_antialt == "kick")),
+                    discord.SelectOption(label="Auto-Ban New Alt", value="ban", description="Ban the new alternate account immediately", default=(self.selected_antialt == "ban")),
+                    discord.SelectOption(label="Silent / Do Nothing", value="ignore", description="Do not log or take any action on duplicate accounts", default=(self.selected_antialt == "ignore")),
                 ]
             )
             select.callback = self._on_select_antialt
@@ -668,7 +686,7 @@ class MultiStepSetupWizardView(discord.ui.View):
         elif self.current_step == 4:
             chan_select = discord.ui.ChannelSelect(
                 channel_types=[discord.ChannelType.text],
-                placeholder=" Select Verification Channel (or leave for auto #verify)...",
+                placeholder="Select Verification Channel (or leave for auto #verify)...",
                 min_values=1,
                 max_values=1,
                 row=0
@@ -678,7 +696,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
             log_select = discord.ui.ChannelSelect(
                 channel_types=[discord.ChannelType.text],
-                placeholder=" Select Security Log Channel (or leave for auto #passkey-logs)...",
+                placeholder="Select Security Log Channel (or leave for auto #passkey-logs)...",
                 min_values=1,
                 max_values=1,
                 row=1
@@ -694,11 +712,11 @@ class MultiStepSetupWizardView(discord.ui.View):
                 max_values=1,
                 row=0,
                 options=[
-                    discord.SelectOption(label=" 0 Days (Disabled - Allow all accounts)", value="0", default=(self.selected_age == 0)),
-                    discord.SelectOption(label=" 3 Days (Block fresh raid accounts)", value="3", default=(self.selected_age == 3)),
-                    discord.SelectOption(label=" 7 Days (Recommended Security)", value="7", default=(self.selected_age == 7)),
-                    discord.SelectOption(label=" 14 Days (Strict Anti-Raid)", value="14", default=(self.selected_age == 14)),
-                    discord.SelectOption(label=" 30 Days (Maximum Security)", value="30", default=(self.selected_age == 30)),
+                    discord.SelectOption(label="0 Days (Disabled - Allow all accounts)", value="0", default=(self.selected_age == 0)),
+                    discord.SelectOption(label="3 Days (Block fresh raid accounts)", value="3", default=(self.selected_age == 3)),
+                    discord.SelectOption(label="7 Days (Recommended Security)", value="7", default=(self.selected_age == 7)),
+                    discord.SelectOption(label="14 Days (Strict Anti-Raid)", value="14", default=(self.selected_age == 14)),
+                    discord.SelectOption(label="30 Days (Maximum Security)", value="30", default=(self.selected_age == 30)),
                 ]
             )
             select.callback = self._on_select_age
@@ -717,7 +735,8 @@ class MultiStepSetupWizardView(discord.ui.View):
             btn_next.callback = self._on_next
             self.add_item(btn_next)
         else:
-            btn_deploy = discord.ui.Button(label="Finish & Deploy Setup", style=discord.ButtonStyle.success, row=2)
+            deploy_label = "Update & Live Sync #verify Message" if self.is_edit else "Finish & Deploy Setup"
+            btn_deploy = discord.ui.Button(label=deploy_label, style=discord.ButtonStyle.success, row=2)
             btn_deploy.callback = self._on_deploy
             self.add_item(btn_deploy)
 
@@ -732,14 +751,16 @@ class MultiStepSetupWizardView(discord.ui.View):
         alt_emoji = Emojis.get("alt", self.bot)
         lock_emoji = Emojis.get("lock", self.bot)
 
+        mode_title = "Passkey Setup Wizard (Edit Mode)" if self.is_edit else "Passkey Setup Wizard"
         embed = discord.Embed(
-            title=f"{passkey_emoji} Passkey Setup Wizard [Step {self.current_step}/{self.total_steps}]",
+            title=f"{passkey_emoji} {mode_title} [Step {self.current_step}/{self.total_steps}]",
             color=0x6366F1
         )
         if self.guild.icon:
             embed.set_thumbnail(url=self.guild.icon.url)
 
         if self.current_step == 1:
+            prev_info = f"\n• **Previous Choice:** `{self.initial_mode.upper()}`" if self.is_edit else ""
             embed.description = (
                 "### 1⃣ Choose Verification Engine\n"
                 "Select one of the **9 advanced verification modes**:\n\n"
@@ -752,60 +773,80 @@ class MultiStepSetupWizardView(discord.ui.View):
                 f"• **{shield_emoji} Math CAPTCHA**: Quick arithmetic modal challenge.\n"
                 f"• **{lock_emoji} Rules Agreement**: Server rules confirmation modal.\n"
                 f"• **{passkey_emoji} 1-Click Button**: Instant click access.\n\n"
-                f" **Current Selection**: `{self.selected_mode.upper()}`"
+                f"{prev_info}\n"
+                f"• **Selected Now:** `{self.selected_mode.upper()}`"
             )
         elif self.current_step == 2:
+            prev_info = f"\n• **Previous Choice:** `{self.initial_lang.upper()}`" if self.is_edit else ""
             embed.description = (
                 "### 2⃣ Choose Default Server Language\n"
                 "Select the default language for verification prompts, embeds, and emails:\n\n"
                 "• Supports 10 global languages (English default, Vietnamese, Japanese, Korean, etc.)\n\n"
-                f" **Current Selection**: `{self.selected_lang.upper()}`"
+                f"{prev_info}\n"
+                f"• **Selected Now:** `{self.selected_lang.upper()}`"
             )
         elif self.current_step == 3:
+            prev_info = f"\n• **Previous Choice:** `{self.initial_antialt.upper()}`" if self.is_edit else ""
             embed.description = (
                 f"### 3⃣ {alt_emoji} Anti-Alt Account Action Policy\n"
                 "What should the bot do when a duplicate IP or Email is detected?\n\n"
-                "• ** Quarantine Both Accounts**: Assigns `@Quarantined` to freeze both accounts for admin review.\n"
-                "• ** Log & Alert Only**: Sends security audit log to staff, but allows join.\n"
-                "• ** Auto-Kick**: Instantly kicks the new alt account.\n"
-                "• ** Auto-Ban**: Instantly bans the new alt account.\n"
-                "• ** Silent Ignore**: Does not log or penalize.\n\n"
-                f" **Current Selection**: `{self.selected_antialt.upper()}`"
+                "• **Quarantine Both Accounts**: Assigns `@Quarantined` to freeze both accounts for admin review.\n"
+                "• **Log & Alert Only**: Sends security audit log to staff, but allows join.\n"
+                "• **Auto-Kick**: Instantly kicks the new alt account.\n"
+                "• **Auto-Ban**: Instantly bans the new alt account.\n"
+                "• **Silent Ignore**: Does not log or penalize.\n\n"
+                f"{prev_info}\n"
+                f"• **Selected Now:** `{self.selected_antialt.upper()}`"
             )
         elif self.current_step == 4:
-            v_text = self.selected_verify_chan.mention if self.selected_verify_chan else "`Auto-create #verify`"
-            l_text = self.selected_log_chan.mention if self.selected_log_chan else "`Auto-create #passkey-logs`"
+            v_text = self.selected_verify_chan.mention if self.selected_verify_chan else "`Auto #verify`"
+            l_text = self.selected_log_chan.mention if self.selected_log_chan else "`Auto #passkey-logs`"
+            prev_v = self.initial_verify_chan.mention if self.initial_verify_chan else "`Auto #verify`"
+            prev_l = self.initial_log_chan.mention if self.initial_log_chan else "`Auto #passkey-logs`"
+            prev_info = f"\n• **Previous Verification Channel:** {prev_v}\n• **Previous Log Channel:** {prev_l}" if self.is_edit else ""
             embed.description = (
                 f"### 4⃣ {shield_emoji} Channel Configuration\n"
                 "Select where members verify and where audit logs will be sent:\n\n"
-                f"• **Verification Channel**: {v_text}\n"
-                f"• **Security Log Channel**: {l_text}\n\n"
-                "*(Select from dropdowns or leave empty to auto-create standard channels)*"
+                f"{prev_info}\n\n"
+                f"• **Selected Verification Channel**: {v_text}\n"
+                f"• **Selected Security Log Channel**: {l_text}\n\n"
+                "*(Select from dropdowns or leave empty to keep default)*"
             )
         elif self.current_step == 5:
-            v_text = self.selected_verify_chan.mention if self.selected_verify_chan else "`Auto-create #verify`"
-            l_text = self.selected_log_chan.mention if self.selected_log_chan else "`Auto-create #passkey-logs`"
-            embed.description = (
-                f"### 5⃣ {shield_emoji} Minimum Account Age & Ready to Deploy\n"
-                "Filter out newly created raid accounts under a certain age:\n\n"
-                f"• **Account Age**: `{self.selected_age} days`\n\n"
-                " **Configuration Summary**:\n"
-                f"• **Method**: `{self.selected_mode.upper()}`\n"
-                f"• **Language**: `{self.selected_lang.upper()}`\n"
-                f"• **Anti-Alt Policy**: `{self.selected_antialt.upper()}`\n"
-                f"• **Verify Channel**: {v_text}\n"
-                f"• **Log Channel**: {l_text}\n"
-                f"• **Min Age**: `{self.selected_age} days`\n"
-                "• **Attempt Limit**: `5 attempts (3 strikes -> Kick / Ban)`\n\n"
-                f"Click **{passkey_emoji} Finish & Deploy Setup** to activate Passkey Gatekeeper!"
-            )
+            v_text = self.selected_verify_chan.mention if self.selected_verify_chan else "`#verify`"
+            l_text = self.selected_log_chan.mention if self.selected_log_chan else "`#passkey-logs`"
+            prev_v = self.initial_verify_chan.mention if self.initial_verify_chan else "`#verify`"
 
-        embed.set_footer(text="Use  and  buttons to navigate between steps • Passkey")
+            if self.is_edit:
+                embed.description = (
+                    f"### 5⃣ {shield_emoji} Review Updates & Live Message Sync\n"
+                    "Review changes before updating the live verification message in Discord:\n\n"
+                    f"• **Verification Engine**: `{self.initial_mode.upper()}` ➔ **`{self.selected_mode.upper()}`**\n"
+                    f"• **Server Language**: `{self.initial_lang.upper()}` ➔ **`{self.selected_lang.upper()}`**\n"
+                    f"• **Anti-Alt Policy**: `{self.initial_antialt.upper()}` ➔ **`{self.selected_antialt.upper()}`**\n"
+                    f"• **Verify Channel**: {prev_v} ➔ **{v_text}**\n"
+                    f"• **Min Account Age**: `{self.initial_age} days` ➔ **`{self.selected_age} days`**\n\n"
+                    "Click **Update & Live Sync #verify Message** below to apply changes and update the message in-place!"
+                )
+            else:
+                embed.description = (
+                    f"### 5⃣ {shield_emoji} Minimum Account Age & Ready to Deploy\n"
+                    "Filter out newly created raid accounts under a certain age:\n\n"
+                    f"• **Account Age**: `{self.selected_age} days`\n\n"
+                    "**Configuration Summary**:\n"
+                    f"• **Method**: `{self.selected_mode.upper()}`\n"
+                    f"• **Language**: `{self.selected_lang.upper()}`\n"
+                    f"• **Anti-Alt Policy**: `{self.selected_antialt.upper()}`\n"
+                    f"• **Verify Channel**: {v_text}\n"
+                    f"• **Log Channel**: {l_text}\n\n"
+                    "Click **Finish & Deploy Setup** to launch Passkey Gatekeeper!"
+                )
+
         return embed
 
     async def _on_select_mode(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message("Only the admin who started setup can interact.", ephemeral=True)
             return
         self.selected_mode = interaction.data["values"][0]
         self._build_step_components()
@@ -813,7 +854,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_select_lang(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message("Only the admin who started setup can interact.", ephemeral=True)
             return
         self.selected_lang = interaction.data["values"][0]
         self._build_step_components()
@@ -821,7 +862,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_select_antialt(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message("Only the admin who started setup can interact.", ephemeral=True)
             return
         self.selected_antialt = interaction.data["values"][0]
         self._build_step_components()
@@ -829,25 +870,25 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_select_verify_chan(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message("Only the admin who started setup can interact.", ephemeral=True)
             return
-        chan_id = interaction.data["values"][0]
-        self.selected_verify_chan = self.guild.get_channel(int(chan_id))
+        chan_id = int(interaction.data["values"][0])
+        self.selected_verify_chan = self.guild.get_channel(chan_id)
         self._build_step_components()
         await interaction.response.edit_message(embed=self.get_step_embed(), view=self)
 
     async def _on_select_log_chan(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message("Only the admin who started setup can interact.", ephemeral=True)
             return
-        chan_id = interaction.data["values"][0]
-        self.selected_log_chan = self.guild.get_channel(int(chan_id))
+        chan_id = int(interaction.data["values"][0])
+        self.selected_log_chan = self.guild.get_channel(chan_id)
         self._build_step_components()
         await interaction.response.edit_message(embed=self.get_step_embed(), view=self)
 
     async def _on_select_age(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message("Only the admin who started setup can interact.", ephemeral=True)
             return
         self.selected_age = int(interaction.data["values"][0])
         self._build_step_components()
@@ -855,7 +896,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_prev(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message("Only the admin who started setup can interact.", ephemeral=True)
             return
         if self.current_step > 1:
             self.current_step -= 1
@@ -864,7 +905,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_next(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message("Only the admin who started setup can interact.", ephemeral=True)
             return
         if self.current_step < self.total_steps:
             self.current_step += 1
@@ -873,7 +914,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_deploy(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message(" Only the admin who started setup can deploy.", ephemeral=True)
+            await interaction.response.send_message("Only the admin who started setup can deploy.", ephemeral=True)
             return
 
         await interaction.response.defer()
@@ -889,7 +930,7 @@ class MultiStepSetupWizardView(discord.ui.View):
                     reason="[Passkey Setup] Created Verified Member Role"
                 )
             except Exception as e:
-                await interaction.followup.send(f" Failed to create `@Verified` role: {e}")
+                await interaction.followup.send(f"Failed to create `@Verified` role: {e}")
                 return
 
         # 2. Setup #verify channel
@@ -908,10 +949,9 @@ class MultiStepSetupWizardView(discord.ui.View):
                     reason="[Passkey Setup] Created Verification Gateway Channel"
                 )
             except Exception as e:
-                await interaction.followup.send(f" Failed to create `#verify` channel: {e}")
+                await interaction.followup.send(f"Failed to create `#verify` channel: {e}")
                 return
         else:
-            # Ensure bot has explicit permission to post in existing channel
             try:
                 await verify_channel.set_permissions(
                     guild.me,
@@ -952,21 +992,32 @@ class MultiStepSetupWizardView(discord.ui.View):
             await self.bot.db.set_guild_config(guild.id, "antialt_action", self.selected_antialt)
             await self.bot.db.set_guild_config(guild.id, "min_age_days", self.selected_age)
 
-        # 5. Post Verification Embed to #verify
+        # 5. Build Updated Verification Embed
         passkey_emoji = Emojis.get("passkey", self.bot)
         shield_emoji = Emojis.get("shield", self.bot)
         verified_emoji = Emojis.get("verified", self.bot)
 
+        is_vi = (self.selected_lang == "vi")
+        embed_title = f"{passkey_emoji} Passkey Server Gatekeeper"
+        embed_desc = (
+            f"Chào mừng bạn đến với **{guild.name}**!\n\n"
+            "Để bảo vệ máy chủ khỏi bot spam và tài khoản tự động, "
+            "vui lòng bấm nút **Click to Verify** bên dưới để hoàn tất xác thực.\n\n"
+            f"• **Phương thức xác thực**: `{self.selected_mode.upper()}`\n"
+            f"• **Ngôn ngữ**: `{self.selected_lang.upper()}`\n"
+            f"• **Quyền truy cập**: {verified_emoji} Mở khóa toàn bộ các kênh trò chuyện ngay sau khi xác thực."
+        ) if is_vi else (
+            f"Welcome to **{guild.name}**!\n\n"
+            "To prevent automated raid bots and maintain community safety, "
+            "please click the **Click to Verify** button below to complete verification.\n\n"
+            f"• **Verification Method**: `{self.selected_mode.upper()}`\n"
+            f"• **Language**: `{self.selected_lang.upper()}`\n"
+            f"• **Instant Access**: {verified_emoji} Unlocks full access to all member channels immediately."
+        )
+
         embed = discord.Embed(
-            title=f"{passkey_emoji} Passkey Server Gatekeeper",
-            description=(
-                f"Welcome to **{guild.name}**!\n\n"
-                "To prevent automated raid bots and maintain community safety, "
-                "please click the **Click to Verify** button below to complete verification.\n\n"
-                f"• **Verification Method**: `{self.selected_mode.upper()}`\n"
-                f"• **Language**: `{self.selected_lang.upper()}`\n"
-                f"• **Instant Access**: {verified_emoji} Unlocks full access to all member channels immediately."
-            ),
+            title=embed_title,
+            description=embed_desc,
             color=0x6366F1
         )
         embed.set_footer(text="Protected by Passkey Zero-Trust Gatekeeper")
@@ -974,15 +1025,51 @@ class MultiStepSetupWizardView(discord.ui.View):
             embed.set_thumbnail(url=guild.icon.url)
 
         view = VerifyButtonView(self.bot, guild.id)
-        try:
-            await verify_channel.send(embed=embed, view=view)
-        except Exception as e:
-            log.warning(f"Could not send verify panel: {e}")
 
-        # 6. Confirmation message
+        # 6. Locate Existing Message in #verify and Live-Edit it in-place
+        cfg = await self.bot.db.get_guild_config(guild.id) if self.bot.db else {}
+        saved_msg_id = cfg.get("verify_message_id")
+        existing_msg = None
+
+        if saved_msg_id:
+            try:
+                existing_msg = await verify_channel.fetch_message(int(saved_msg_id))
+            except Exception:
+                existing_msg = None
+
+        if not existing_msg:
+            try:
+                async for msg in verify_channel.history(limit=25):
+                    if msg.author.id == self.bot.user.id and msg.embeds:
+                        t = msg.embeds[0].title or ""
+                        if "Passkey" in t or "Gatekeeper" in t:
+                            existing_msg = msg
+                            break
+            except Exception:
+                pass
+
+        if existing_msg:
+            try:
+                await existing_msg.edit(embed=embed, view=view)
+                if self.bot.db:
+                    await self.bot.db.set_guild_config(guild.id, "verify_message_id", str(existing_msg.id))
+                msg_action_text = f"Live Updated existing verification panel in {verify_channel.mention} (Message ID: `{existing_msg.id}`)"
+            except Exception:
+                new_msg = await verify_channel.send(embed=embed, view=view)
+                if self.bot.db:
+                    await self.bot.db.set_guild_config(guild.id, "verify_message_id", str(new_msg.id))
+                msg_action_text = f"Posted updated verification panel to {verify_channel.mention}"
+        else:
+            new_msg = await verify_channel.send(embed=embed, view=view)
+            if self.bot.db:
+                await self.bot.db.set_guild_config(guild.id, "verify_message_id", str(new_msg.id))
+            msg_action_text = f"Posted new verification panel to {verify_channel.mention}"
+
+        # 7. Confirmation message
+        summary_title = f"{verified_emoji} Passkey Settings Updated & Synced!" if self.is_edit else f"{verified_emoji} Passkey Gatekeeper Deployed Successfully!"
         summary_embed = discord.Embed(
-            title=f"{verified_emoji} Passkey Gatekeeper Deployed Successfully!",
-            description=f"{shield_emoji} Your server is now protected by Passkey Zero-Trust Security Network.",
+            title=summary_title,
+            description=f"{shield_emoji} **{msg_action_text}**\n\nYour server configuration has been updated and synchronized in real-time.",
             color=0x10B981
         )
         summary_embed.add_field(name="Verification Channel", value=verify_channel.mention, inline=True)
@@ -1208,7 +1295,7 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
         if self.bot.db:
             cfg = await self.bot.db.get_guild_config(ctx.guild.id)
 
-        wizard_view = MultiStepSetupWizardView(self.bot, ctx.guild, ctx.author)
+        wizard_view = MultiStepSetupWizardView(self.bot, ctx.guild, ctx.author, is_edit=True)
         wizard_view.selected_mode = cfg.get("verify_mode", "web")
         wizard_view.selected_lang = cfg.get("language", "en")
         wizard_view.selected_antialt = cfg.get("antialt_action", "quarantine")
@@ -1222,6 +1309,7 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
         if l_chan_id:
             wizard_view.selected_log_chan = ctx.guild.get_channel(int(l_chan_id))
 
+        wizard_view.sync_initial_state()
         wizard_view._build_step_components()
         await ctx.send(embed=wizard_view.get_step_embed(), view=wizard_view)
 
