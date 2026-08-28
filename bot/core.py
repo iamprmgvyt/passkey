@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Passkey Bot — Core Client Implementation with Automatic Slash Command Sync."""
+"""Passkey Bot — Core Client Implementation with Automatic Slash Command & Emoji Sync."""
 import discord
 from discord.ext import commands
 import datetime
 import logging
 from utils.config import Config
+from utils.emojis import Emojis
 from database.db import Database
 
 log = logging.getLogger("passkey.core")
@@ -15,6 +16,7 @@ class PasskeyBot(commands.Bot):
         intents.guilds = True
         intents.members = True
         intents.message_content = True
+        intents.emojis = True
 
         super().__init__(
             command_prefix=Config.BOT_PREFIX,
@@ -54,7 +56,7 @@ class PasskeyBot(commands.Bot):
             type=discord.ActivityType.watching, name="over server gates • /help | .help"
         ))
 
-        # Automatic Global Slash Command Sync on Ready
+        # 1. Automatic Global Slash Command Sync on Ready
         if not self.synced:
             try:
                 synced_cmds = await self.tree.sync()
@@ -62,5 +64,14 @@ class PasskeyBot(commands.Bot):
                 log.info(f"✅ Successfully synced {len(synced_cmds)} global Slash Commands with Discord!")
             except Exception as e:
                 log.warning(f"Auto-syncing slash commands failed: {e}")
+
+        # 2. Automatic Custom Emojis Auto-Uploader
+        for guild in self.guilds:
+            try:
+                uploaded = await Emojis.ensure_guild_emojis(guild)
+                if uploaded:
+                    log.info(f"✅ Synced {len(uploaded)} Custom Neon Emojis into {guild.name}")
+            except Exception as e:
+                log.warning(f"Could not auto-sync emojis in {guild.name}: {e}")
 
 bot = PasskeyBot()

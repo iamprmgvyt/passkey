@@ -249,6 +249,37 @@ class General(commands.Cog, name="General & Utilities"):
             )
             await ctx.send(embed=embed)
 
+    @commands.hybrid_command(name="sync_emojis", aliases=["emojis", "upload_emojis", "syncemojis"])
+    @commands.has_permissions(administrator=True)
+    @commands.bot_has_permissions(manage_emojis_and_stickers=True)
+    async def sync_emojis_cmd(self, ctx: commands.Context):
+        """Upload all 12 Passkey Custom Neon Emojis into this Discord server."""
+        if ctx.interaction:
+            await ctx.interaction.response.defer()
+
+        uploaded = await Emojis.ensure_guild_emojis(ctx.guild)
+        passkey_emoji = Emojis.get("passkey", self.bot, ctx.guild)
+        shield_emoji = Emojis.get("shield", self.bot, ctx.guild)
+
+        if uploaded:
+            emoji_list = " ".join(uploaded.values())
+            embed = discord.Embed(
+                title=f"{passkey_emoji} Custom Neon Emojis Synced!",
+                description=f"{shield_emoji} Successfully uploaded/verified **{len(uploaded)} Custom Neon Emojis** in **{ctx.guild.name}**:\n\n{emoji_list}",
+                color=0x10B981
+            )
+        else:
+            embed = discord.Embed(
+                title="⚠️ Emojis Status",
+                description="All emojis are already uploaded or bot lacks `Manage Emojis` permission.",
+                color=0xF59E0B
+            )
+
+        if ctx.interaction:
+            await ctx.interaction.followup.send(embed=embed)
+        else:
+            await ctx.send(embed=embed)
+
 
 async def setup(bot):
     await bot.add_cog(General(bot))
