@@ -224,12 +224,15 @@ class General(commands.Cog, name="General & Utilities"):
         embed.set_footer(text="Passkey Security Core • Type /help anytime")
         await ctx.send(embed=embed)
 
-    @commands.command(name="sync")
+    @commands.hybrid_command(name="sync")
     @commands.has_permissions(administrator=True)
-    async def sync_commands(self, ctx: commands.Context, mode: str = "global"):
-        """Sync and refresh Slash Commands with Discord gateway."""
+    async def sync_commands(self, ctx: commands.Context, mode: str = "guild"):
+        """Sync and refresh Slash Commands with Discord gateway (instant for guild)."""
         passkey_emoji = Emojis.get("passkey", self.bot)
         verified_emoji = Emojis.get("verified", self.bot)
+
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
 
         if mode.lower() == "global":
             synced = await self.bot.tree.sync()
@@ -238,15 +241,18 @@ class General(commands.Cog, name="General & Utilities"):
                 description=f"Successfully registered **{len(synced)} global Slash Commands** with Discord.",
                 color=0x10B981
             )
-            await ctx.send(embed=embed)
         else:
             self.bot.tree.copy_global_to(guild=ctx.guild)
             synced = await self.bot.tree.sync(guild=ctx.guild)
             embed = discord.Embed(
                 title=f"{verified_emoji} Guild Slash Commands Synced!",
-                description=f"Successfully registered **{len(synced)} Slash Commands** specifically for **{ctx.guild.name}**.",
+                description=f"Successfully registered **{len(synced)} Slash Commands** specifically for **{ctx.guild.name}** (Active immediately!).",
                 color=0x10B981
             )
+
+        if ctx.interaction:
+            await ctx.interaction.followup.send(embed=embed, ephemeral=True)
+        else:
             await ctx.send(embed=embed)
 
     @commands.hybrid_command(name="sync_emojis", aliases=["emojis", "upload_emojis", "syncemojis"])

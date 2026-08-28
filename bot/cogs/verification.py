@@ -1195,8 +1195,34 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
     @commands.has_permissions(administrator=True)
     @commands.bot_has_permissions(manage_roles=True, manage_channels=True)
     async def setup_command(self, ctx: commands.Context):
-        """Interactive step-by-step Setup Wizard with pagination ( Previous /  Next)."""
+        """Interactive step-by-step Setup Wizard with pagination (Previous / Next)."""
         wizard_view = MultiStepSetupWizardView(self.bot, ctx.guild, ctx.author)
+        await ctx.send(embed=wizard_view.get_step_embed(), view=wizard_view)
+
+    @commands.hybrid_command(name="edit_setup", aliases=["editsetup", "reconfigure", "reconfig"])
+    @commands.has_permissions(administrator=True)
+    @commands.bot_has_permissions(manage_roles=True, manage_channels=True)
+    async def edit_setup_command(self, ctx: commands.Context):
+        """Edit or reconfigure existing verification settings in the 5-step wizard."""
+        cfg = {}
+        if self.bot.db:
+            cfg = await self.bot.db.get_guild_config(ctx.guild.id)
+
+        wizard_view = MultiStepSetupWizardView(self.bot, ctx.guild, ctx.author)
+        wizard_view.selected_mode = cfg.get("verify_mode", "web")
+        wizard_view.selected_lang = cfg.get("language", "en")
+        wizard_view.selected_antialt = cfg.get("antialt_action", "quarantine")
+        wizard_view.selected_age = int(cfg.get("min_age_days", 0))
+
+        v_chan_id = cfg.get("verify_channel_id")
+        if v_chan_id:
+            wizard_view.selected_verify_chan = ctx.guild.get_channel(int(v_chan_id))
+
+        l_chan_id = cfg.get("log_channel_id")
+        if l_chan_id:
+            wizard_view.selected_log_chan = ctx.guild.get_channel(int(l_chan_id))
+
+        wizard_view._build_step_components()
         await ctx.send(embed=wizard_view.get_step_embed(), view=wizard_view)
 
     @commands.hybrid_command(name="settings", aliases=["config", "panel", "setting"])

@@ -19,7 +19,7 @@ class PasskeyBot(commands.Bot):
         intents.emojis = True
 
         super().__init__(
-            command_prefix=Config.BOT_PREFIX,
+            command_prefix=commands.when_mentioned_or("p!", "P!", "p.", "P.", "."),
             intents=intents,
             help_command=None
         )
@@ -53,17 +53,24 @@ class PasskeyBot(commands.Bot):
     async def on_ready(self):
         log.info(f"Logged in as {self.user} (ID: {self.user.id})")
         await self.change_presence(activity=discord.Activity(
-            type=discord.ActivityType.watching, name="over server gates • /help | .help"
+            type=discord.ActivityType.watching, name="over server gates • p!help | /help"
         ))
 
-        # 1. Automatic Global Slash Command Sync on Ready
+        # 1. Automatic Global & Instant Guild Slash Command Sync on Ready
         if not self.synced:
             try:
-                synced_cmds = await self.tree.sync()
+                synced = await self.tree.sync()
+                log.info(f"Automatically synced {len(synced)} Slash Commands globally.")
+                for guild in self.guilds:
+                    try:
+                        self.tree.copy_global_to(guild=guild)
+                        await self.tree.sync(guild=guild)
+                        log.info(f"Instantly synced Slash Commands for guild: {guild.name} ({guild.id})")
+                    except Exception as ge:
+                        log.warning(f"Could not sync slash commands for guild {guild.id}: {ge}")
                 self.synced = True
-                log.info(f" Successfully synced {len(synced_cmds)} global Slash Commands with Discord!")
             except Exception as e:
-                log.warning(f"Auto-syncing slash commands failed: {e}")
+                log.error(f"Failed to sync slash commands on ready: {e}")
 
         # 2. Automatic Custom Emojis Auto-Uploader
         for guild in self.guilds:

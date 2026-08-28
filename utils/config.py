@@ -7,7 +7,7 @@ load_dotenv()
 
 class Config:
     BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-    BOT_PREFIX = os.getenv("BOT_PREFIX", ".") or "."
+    BOT_PREFIX = os.getenv("BOT_PREFIX", "p!") or "p!"
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///passkey.db")
     TURSO_DATABASE_URL = os.getenv("TURSO_DATABASE_URL", "")
     TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "")
