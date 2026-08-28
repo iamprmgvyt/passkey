@@ -117,19 +117,26 @@ async def handle_alt_detection(bot, guild: discord.Guild, member: discord.Member
     alt_mention = alt_member.mention if alt_member else f"`{alt_user_id}`"
 
     log_channel_id = config.get("log_channel_id")
-    if log_channel_id:
-        log_chan = guild.get_channel(int(log_channel_id))
-        if log_chan:
-            embed = discord.Embed(
-                title="🚨 Alt Account Detected!",
-                description=f"**New Account**: {member.mention} (`{member.id}`)\n**Linked Alt**: {alt_mention}\n**Detection Method**: `{method}`\n**Action Applied**: `{action.upper()}`",
-                color=0xEF4444,
-                timestamp=datetime.datetime.now(datetime.timezone.utc)
-            )
-            try:
-                await log_chan.send(embed=embed)
-            except Exception:
-                pass
+    log_chan = guild.get_channel(int(log_channel_id)) if log_channel_id else (discord.utils.get(guild.text_channels, name="passkey-logs") or discord.utils.get(guild.text_channels, name="security-logs"))
+    if log_chan:
+        alt_emoji = Emojis.get("alt", bot)
+        embed = discord.Embed(
+            title=f"{alt_emoji} Alt Account Detected!",
+            description=(
+                f"**New Account**: {member.mention} (`{member.id}`)\n"
+                f"**Linked Alt**: {alt_mention}\n"
+                f"**Detection Method**: `{method}`\n"
+                f"**Action Applied**: `{action.upper()}`"
+            ),
+            color=0xEF4444,
+            timestamp=datetime.datetime.now(datetime.timezone.utc)
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        embed.set_footer(text="Passkey Deep Neural Anti-Alt Defense")
+        try:
+            await log_chan.send(embed=embed)
+        except Exception as e:
+            log.warning(f"Failed to send alt alert to log channel: {e}")
 
     if action == "log":
         return True, "Alt link logged to moderators."

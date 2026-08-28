@@ -524,6 +524,19 @@ async def verify_page(request: Request, session: str = ""):
 </html>"""
     return HTMLResponse(html)
 
+def get_real_client_ip(request: Request) -> str:
+    """Extract true visitor IP through Cloudflare, Render, or reverse proxy."""
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip and cf_ip.strip():
+        return cf_ip.strip()
+    xff = request.headers.get("x-forwarded-for")
+    if xff and xff.strip():
+        return xff.split(",")[0].strip()
+    x_real = request.headers.get("x-real-ip")
+    if x_real and x_real.strip():
+        return x_real.strip()
+    return request.client.host if request.client else "127.0.0.1"
+
 @router.post("/api/verify/complete")
 async def api_complete_verif(request: Request):
     bot = getattr(request.app.state, "bot", None)
@@ -538,7 +551,7 @@ async def api_complete_verif(request: Request):
     except Exception:
         return JSONResponse(status_code=400, content={"ok": False, "detail": "Invalid payload."})
 
-    client_ip = request.client.host if request.client else ""
+    client_ip = get_real_client_ip(request)
 
     # Validate Cloudflare Turnstile if not biometric
     if verif_method != "biometric":
@@ -562,8 +575,8 @@ async def api_complete_verif(request: Request):
     # Check Anti-Alt via IP
     if bot.db and client_ip:
         alt_user_id = await bot.db.check_alt_ip(guild.id, member.id, client_ip)
-        if alt_user_id:
-            allowed, alt_msg = await handle_alt_detection(bot, guild, member, alt_user_id, method="IP Address")
+        if alt_user_id and str(alt_user_id) != str(member.id):
+            allowed, alt_msg = await handle_alt_detection(bot, guild, member, alt_user_id, method=f"IP ({client_ip})")
             if not allowed:
                 return JSONResponse(status_code=403, content={"ok": False, "detail": alt_msg})
 
@@ -585,11 +598,42 @@ async def api_complete_verif(request: Request):
         log.error(f"Failed to add verified role: {e}")
         return JSONResponse(status_code=500, content={"ok": False, "detail": f"Discord Permission Error: Bot cannot assign role '{verified_role.name}'. Please make sure Passkey's bot role is higher than '{verified_role.name}' in Discord Server Settings."})
 
+    # Save to Database
     if bot.db:
         try:
             await bot.db.log_verification(guild.id, member.id, method=verif_method, ip_hash=client_ip)
         except Exception as e:
             log.warning(f"Failed to log verification in DB: {e}")
+
+    # Send Verification Audit Log to #passkey-logs
+    log_chan_id = config.get("log_channel_id")
+    log_chan = guild.get_channel(int(log_chan_id)) if log_chan_id else (discord.utils.get(guild.text_channels, name="passkey-logs") or discord.utils.get(guild.text_channels, name="security-logs"))
+    if log_chan:
+        try:
+            import datetime
+            from utils.emojis import Emojis
+            account_age_days = (datetime.datetime.now(datetime.timezone.utc) - member.created_at).days
+            verified_emoji = Emojis.get("verified", bot)
+            shield_emoji = Emojis.get("shield", bot)
+
+            log_embed = discord.Embed(
+                title=f"{verified_emoji} Member Verified Successfully",
+                description=(
+                    f"**Member:** {member.mention} (`{member.id}`)\n"
+                    f"**Verification Method:** `{verif_method.upper()}`\n"
+                    f"**Role Assigned:** {verified_role.mention}\n"
+                    f"**Account Age:** `{account_age_days} days`\n"
+                    f"**Client IP:** `{client_ip}`\n"
+                    f"**Status:** {shield_emoji} Access Granted"
+                ),
+                color=0x10B981,
+                timestamp=datetime.datetime.now(datetime.timezone.utc)
+            )
+            log_embed.set_thumbnail(url=member.display_avatar.url)
+            log_embed.set_footer(text="Passkey Security Audit Log")
+            await log_chan.send(embed=log_embed)
+        except Exception as e:
+            log.warning(f"Could not send verif log to channel: {e}")
 
     return {"ok": True}
 
@@ -607,7 +651,7 @@ async def api_send_email_otp(request: Request):
     except Exception:
         return JSONResponse(status_code=400, content={"ok": False, "detail": "Invalid payload."})
 
-    client_ip = request.client.host if request.client else ""
+    client_ip = get_real_client_ip(request)
     cf_passed = await verify_cf_turnstile(cf_token, client_ip)
     if not cf_passed:
         return JSONResponse(status_code=403, content={"ok": False, "detail": "Cloudflare CAPTCHA verification failed. Please try again."})
@@ -628,8 +672,8 @@ async def api_send_email_otp(request: Request):
     # Check Anti-Alt via Email
     if bot.db:
         alt_user_id = await bot.db.check_alt_email(guild.id, member.id, email)
-        if alt_user_id:
-            allowed, alt_msg = await handle_alt_detection(bot, guild, member, alt_user_id, method="Email Address")
+        if alt_user_id and str(alt_user_id) != str(member.id):
+            allowed, alt_msg = await handle_alt_detection(bot, guild, member, alt_user_id, method=f"Email ({email})")
             if not allowed:
                 return JSONResponse(status_code=403, content={"ok": False, "detail": alt_msg})
 
@@ -675,6 +719,7 @@ async def api_verify_email_otp(request: Request):
     except Exception:
         return JSONResponse(status_code=400, content={"ok": False, "detail": "Invalid payload."})
 
+    client_ip = get_real_client_ip(request)
     otp_data = EMAIL_OTP_SESSIONS.get(token)
     if not otp_data:
         return JSONResponse(status_code=400, content={"ok": False, "detail": "OTP session expired. Please request a new code."})
@@ -720,8 +765,38 @@ async def api_verify_email_otp(request: Request):
 
     if bot.db:
         try:
-            await bot.db.log_verification(guild.id, member.id, method="email", email=otp_data["email"])
+            await bot.db.log_verification(guild.id, member.id, method="email", email=otp_data["email"], ip_hash=client_ip)
         except Exception as e:
             log.warning(f"Failed to log email verification in DB: {e}")
+
+    # Send Verification Audit Log to #passkey-logs
+    log_chan_id = config.get("log_channel_id")
+    log_chan = guild.get_channel(int(log_chan_id)) if log_chan_id else (discord.utils.get(guild.text_channels, name="passkey-logs") or discord.utils.get(guild.text_channels, name="security-logs"))
+    if log_chan:
+        try:
+            import datetime
+            from utils.emojis import Emojis
+            account_age_days = (datetime.datetime.now(datetime.timezone.utc) - member.created_at).days
+            verified_emoji = Emojis.get("verified", bot)
+            otp_emoji = Emojis.get("otp", bot)
+
+            log_embed = discord.Embed(
+                title=f"{verified_emoji} Member Email Verified Successfully",
+                description=(
+                    f"**Member:** {member.mention} (`{member.id}`)\n"
+                    f"**Method:** `EMAIL OTP` {otp_emoji}\n"
+                    f"**Email:** `{otp_data['email']}`\n"
+                    f"**Role Assigned:** {verified_role.mention}\n"
+                    f"**Account Age:** `{account_age_days} days`\n"
+                    f"**Client IP:** `{client_ip}`"
+                ),
+                color=0x10B981,
+                timestamp=datetime.datetime.now(datetime.timezone.utc)
+            )
+            log_embed.set_thumbnail(url=member.display_avatar.url)
+            log_embed.set_footer(text="Passkey Security Audit Log")
+            await log_chan.send(embed=log_embed)
+        except Exception as e:
+            log.warning(f"Could not send email verif log to channel: {e}")
 
     return {"ok": True}
