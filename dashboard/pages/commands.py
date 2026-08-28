@@ -181,9 +181,18 @@ async def commands_page():
               </div>
             </div>
             """
+        icon_map = {
+            "Verification": "passkey.png",
+            "AutoMod & Defense Shields": "shield.png",
+            "Moderation & System": "ban.png"
+        }
+        icon_file = icon_map.get(cat["category"], "passkey.png")
         sections_html += f"""
         <div class="category-block">
-          <h2 class="cat-title">🛡️ {cat["category"]}</h2>
+          <h2 class="cat-title">
+            <img src="/static/emojis/{icon_file}" class="emoji-icon-md" alt="">
+            <span>{cat["category"]}</span>
+          </h2>
           <div class="cmd-list">{cmds_html}</div>
         </div>
         """

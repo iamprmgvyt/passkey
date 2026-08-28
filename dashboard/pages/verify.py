@@ -62,7 +62,7 @@ async def verify_page(request: Request, session: str = ""):
 
     guild_name = "Discord Server"
     user_name = "Member"
-    guild_icon = "/static/passkey.png"
+    guild_icon = "/static/emojis/passkey.png"
     verify_mode = "web"
     server_lang = "en"
     is_valid = bool(session_data and bot and bot.is_ready())
@@ -103,18 +103,20 @@ async def verify_page(request: Request, session: str = ""):
     .verify-card {{
       background: var(--card); border: 1px solid var(--border); border-radius: 22px;
       padding: 36px 30px; text-align: center; max-width: 480px; width: 100%; margin: 20px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.45); backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
     }}
     .server-icon {{
-      width: 76px; height: 76px; border-radius: 50%; border: 3px solid rgba(99, 102, 241, 0.4);
-      margin-bottom: 14px; object-fit: cover;
+      width: 76px; height: 76px; border-radius: 50%; border: 3px solid rgba(168, 85, 247, 0.4);
+      margin-bottom: 14px; object-fit: cover; box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
     }}
     .btn-verify {{
-      width: 100%; background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+      width: 100%; background: var(--gradient-btn);
       color: #fff; font-size: 1rem; font-weight: 800; padding: 14px 20px; border-radius: 12px;
       border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     }}
-    .btn-verify:hover {{ transform: translateY(-2px); }}
+    .btn-verify:hover {{ transform: translateY(-2px); box-shadow: 0 6px 25px rgba(99,102,241,0.6); }}
     .btn-verify:disabled {{ opacity: 0.6; cursor: not-allowed; transform: none; }}
     .status-msg {{
       margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 0.84rem; display: none;
@@ -127,7 +129,7 @@ async def verify_page(request: Request, session: str = ""):
     .email-input:focus {{ border-color: #818cf8; }}
     .otp-input {{
       width: 100%; box-sizing: border-box; background: rgba(15, 23, 42, 0.8);
-      border: 2px dashed #6366f1; border-radius: 10px; padding: 12px 16px;
+      border: 2px dashed #a855f7; border-radius: 10px; padding: 12px 16px;
       color: #38bdf8; font-size: 1.4rem; letter-spacing: 6px; text-align: center;
       margin-bottom: 14px; outline: none; font-family: var(--mono); font-weight: 800;
     }}
@@ -135,7 +137,8 @@ async def verify_page(request: Request, session: str = ""):
       display: flex; justify-content: center; margin: 16px 0; min-height: 65px;
     }}
     .attempt-notice {{
-      font-size: 0.76rem; color: #f59e0b; margin-top: 8px;
+      font-size: 0.78rem; color: #f59e0b; margin-top: 10px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
     }}
     .social-badge-grid {{
       display: flex; justify-content: center; gap: 10px; margin: 16px 0; flex-wrap: wrap;
@@ -148,9 +151,14 @@ async def verify_page(request: Request, session: str = ""):
 </head>
 <body>
   <div class="verify-card">
-    <img src="{guild_icon}" alt="Icon" class="server-icon" onerror="this.src='/static/passkey.png'">
-    <div style="font-family:var(--mono);font-size:0.72rem;color:#818cf8;font-weight:700;margin-bottom:8px;">🔑 PASSKEY ZERO-TRUST GATEKEEPER</div>
-    <h1 style="font-size:1.35rem;font-weight:800;margin:0 0 6px;">{guild_name}</h1>
+    <img src="{guild_icon}" alt="Icon" class="server-icon" onerror="this.src='/static/emojis/passkey.png'">
+    <div style="margin-bottom:8px;">
+      <span class="badge-neon">
+        <img src="/static/emojis/passkey.png" class="emoji-icon" alt="">
+        <span>PASSKEY ZERO-TRUST GATEKEEPER</span>
+      </span>
+    </div>
+    <h1 style="font-size:1.35rem;font-weight:900;margin:0 0 6px;">{guild_name}</h1>
     <p style="color:var(--text-muted);font-size:0.86rem;margin-bottom:18px;">
       {'Chào mừng' if is_vi else 'Welcome'} <strong>{user_name}</strong>! {'Hoàn tất xác thực an toàn để tham gia máy chủ.' if is_vi else 'Complete secure verification to gain access to the server.'}
     </p>
@@ -162,49 +170,59 @@ async def verify_page(request: Request, session: str = ""):
 
     <!-- 1. Biometric Passkey WebAuthn Mode -->
     <div id="biometric-mode-box" style="{'display:block;' if is_biometric_mode else 'display:none;'}">
-      <div style="font-size:3rem;margin-bottom:10px;">📱</div>
+      <div style="margin-bottom:16px;">
+        <img src="/static/emojis/biometric.png" class="emoji-icon-lg" alt="Biometrics">
+      </div>
       <p style="font-size:0.86rem;color:#cbd5e1;margin-bottom:16px;">
         {'Bấm nút bên dưới để xác thực sinh trắc học Touch ID, Face ID, Windows Hello hoặc Khóa bảo mật FIDO2:' if is_vi else 'Authenticate with Touch ID, Face ID, Windows Hello, or FIDO2 Security Key:'}
       </p>
       <button type="button" class="btn-verify" id="btn-biometric" onclick="submitBiometricAuth('{token}')">
-        📱 {'Xác Thực Sinh Trắc Học (Passkey)' if is_vi else 'Verify with Biometrics / Touch ID'}
+        <img src="/static/emojis/biometric.png" class="emoji-icon" alt="">
+        <span>{'Xác Thực Sinh Trắc Học (Passkey)' if is_vi else 'Verify with Biometrics / Touch ID'}</span>
       </button>
       <div class="attempt-notice">
-        {'🔒 Yêu cầu phần cứng sinh trắc học an toàn tuyệt đối 100%.' if is_vi else '🔒 100% Hardware-backed Zero-Trust authentication.'}
+        <img src="/static/emojis/lock.png" class="emoji-icon" alt="">
+        <span>{'Yêu cầu phần cứng sinh trắc học an toàn tuyệt đối 100%.' if is_vi else '100% Hardware-backed Zero-Trust authentication.'}</span>
       </div>
     </div>
 
     <!-- 2. Email OTP Mode -->
     <div id="email-mode-box" style="{'display:block;' if is_email_mode else 'display:none;'}">
       <div id="step-email">
-        <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:12px;">
+        <p style="font-size:0.82rem;color:#cbd5e1;margin-bottom:12px;">
           {'Nhập email của bạn để nhận mã xác minh OTP 6 số:' if is_vi else 'Enter your email to receive a 6-digit OTP code:'}
         </p>
         <input type="email" id="inp-email" class="email-input" placeholder="your-email@domain.com">
         <button type="button" class="btn-verify" id="btn-send-otp" onclick="sendEmailOtp('{token}')">
-          {'Gửi Mã Xác Nhận ✉️' if is_vi else 'Send Verification Code ✉️'}
+          <img src="/static/emojis/otp.png" class="emoji-icon" alt="">
+          <span>{'Gửi Mã Xác Nhận ✉️' if is_vi else 'Send Verification Code ✉️'}</span>
         </button>
       </div>
 
       <div id="step-otp" style="display:none;">
-        <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:8px;">
+        <p style="font-size:0.82rem;color:#cbd5e1;margin-bottom:8px;">
           {'Kiểm tra hòm thư (kể cả mục Spam) và nhập mã 6 số:' if is_vi else 'Check your inbox or Spam folder and enter the 6-digit code:'}
         </p>
         <input type="text" id="inp-otp" class="otp-input" maxlength="6" placeholder="123456">
         <button type="button" class="btn-verify" id="btn-verify-otp" onclick="submitEmailOtp('{token}')">
-          {'Xác Nhận Mã OTP' if is_vi else 'Verify OTP Code'}
+          <img src="/static/emojis/verified.png" class="emoji-icon" alt="">
+          <span>{'Xác Nhận Mã OTP' if is_vi else 'Verify OTP Code'}</span>
         </button>
         <div class="attempt-notice">
-          {'⚠️ Tối đa 5 lần thử. Nhập sai quá giới hạn sẽ bị cảnh cáo hoặc kick.' if is_vi else '⚠️ Max 5 attempts allowed. Exceeding limit will issue a warning or kick.'}
+          <img src="/static/emojis/warn.png" class="emoji-icon" alt="">
+          <span>{'Tối đa 5 lần thử. Nhập sai quá giới hạn sẽ bị cảnh cáo hoặc kick.' if is_vi else 'Max 5 attempts allowed. Exceeding limit will issue a warning or kick.'}</span>
         </div>
-        <div style="margin-top:10px;">
-          <a href="javascript:void(0)" onclick="resetEmailStep()" style="font-size:0.78rem;color:#818cf8;text-decoration:none;">&larr; {'Đổi địa chỉ email khác' if is_vi else 'Change email address'}</a>
+        <div style="margin-top:12px;">
+          <a href="javascript:void(0)" onclick="resetEmailStep()" style="font-size:0.8rem;color:#818cf8;text-decoration:none;">&larr; {'Đổi địa chỉ email khác' if is_vi else 'Change email address'}</a>
         </div>
       </div>
     </div>
 
     <!-- 3. Social Connection Mode -->
     <div id="social-mode-box" style="{'display:block;' if is_social_mode else 'display:none;'}">
+      <div style="margin-bottom:12px;">
+        <img src="/static/emojis/social.png" class="emoji-icon-lg" alt="Social">
+      </div>
       <p style="font-size:0.82rem;color:#cbd5e1;margin-bottom:12px;">
         {'Máy chủ yêu cầu xác thực tài khoản có liên kết mạng xã hội:' if is_vi else 'This server requires at least 1 verified connected account:'}
       </p>
@@ -217,23 +235,27 @@ async def verify_page(request: Request, session: str = ""):
         <div class="social-badge">👾 Twitch</div>
       </div>
       <button type="button" class="btn-verify" id="btn-social" onclick="submitStandardVerification('{token}')">
-        🔗 {'Kiểm Tra Liên Kết & Xác Thực' if is_vi else 'Verify Connected Accounts'}
+        <img src="/static/emojis/social.png" class="emoji-icon" alt="">
+        <span>{'Kiểm Tra Liên Kết & Xác Thực' if is_vi else 'Verify Connected Accounts'}</span>
       </button>
     </div>
 
     <!-- 4. Standard Web Turnstile Mode -->
     <div id="standard-mode-box" style="{'display:block;' if (not is_email_mode and not is_biometric_mode and not is_social_mode) else 'display:none;'}">
       <button type="button" class="btn-verify" id="btn-submit" onclick="submitStandardVerification('{token}')">
-        {'Tôi là con người — Xác thực 🔑' if is_vi else 'I am Human — Verify 🔑'}
+        <img src="/static/emojis/verified.png" class="emoji-icon" alt="">
+        <span>{'Tôi là con người — Xác thực 🔑' if is_vi else 'I am Human — Verify 🔑'}</span>
       </button>
       <div class="attempt-notice">
-        {'⚠️ Tối đa 5 lần thử xác thực.' if is_vi else '⚠️ Max 5 verification attempts allowed.'}
+        <img src="/static/emojis/warn.png" class="emoji-icon" alt="">
+        <span>{'Tối đa 5 lần thử xác thực.' if is_vi else 'Max 5 verification attempts allowed.'}</span>
       </div>
     </div>
 
     <div class="status-msg" id="status-box"></div>
-    <div style="font-family:var(--mono);font-size:0.68rem;color:var(--text-dim);margin-top:22px;">
-      Protected by Passkey Multi-Gateway &bull; Cloudflare Turnstile &bull; WebAuthn
+    <div style="font-family:var(--mono);font-size:0.7rem;color:var(--text-dim);margin-top:22px;display:flex;align-items:center;justify-content:center;gap:6px;">
+      <img src="/static/emojis/shield.png" class="emoji-icon" alt="">
+      <span>Protected by Passkey Multi-Gateway &bull; Cloudflare Turnstile &bull; WebAuthn</span>
     </div>
   </div>
 
@@ -286,15 +308,12 @@ async def verify_page(request: Request, session: str = ""):
       btn.disabled = true;
       btn.textContent = 'Scanning Biometrics...';
 
-      // Check if WebAuthn is available in browser
       if (window.PublicKeyCredential) {{
         try {{
-          // Create dummy challenge for WebAuthn prompt
           const challenge = new Uint8Array(32);
           window.crypto.getRandomValues(challenge);
           
-          // Request user biometric credential
-          const cred = await navigator.credentials.create({{
+          await navigator.credentials.create({{
             publicKey: {{
               challenge: challenge,
               rp: {{ name: "Passkey Gatekeeper" }},
@@ -311,9 +330,7 @@ async def verify_page(request: Request, session: str = ""):
               timeout: 60000
             }}
           }}).catch(() => null);
-        }} catch (err) {{
-          // Non-blocking fallback
-        }}
+        }} catch (err) {{}}
       }}
 
       try {{
@@ -329,12 +346,12 @@ async def verify_page(request: Request, session: str = ""):
         }} else {{
           showMsg('❌ ' + (data.detail || 'Biometric verification failed.'));
           btn.disabled = false;
-          btn.textContent = 'Retry Biometrics 📱';
+          btn.textContent = 'Retry Biometrics';
         }}
       }} catch (e) {{
         showMsg('❌ Connection error.');
         btn.disabled = false;
-        btn.textContent = 'Retry Biometrics 📱';
+        btn.textContent = 'Retry Biometrics';
       }}
     }}
 

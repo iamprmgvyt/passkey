@@ -8,12 +8,12 @@ BASE_STYLE = """
 <style>
 :root {
   --bg: #07090e;
-  --bg-gradient: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15) 0%, rgba(7, 9, 14, 1) 75%);
-  --card: rgba(18, 22, 34, 0.75);
-  --card-hover: rgba(28, 33, 50, 0.9);
+  --bg-gradient: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.18) 0%, rgba(7, 9, 14, 1) 75%);
+  --card: rgba(18, 22, 34, 0.78);
+  --card-hover: rgba(28, 33, 50, 0.95);
   --card-solid: #111420;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(99, 102, 241, 0.35);
+  --border: rgba(255, 255, 255, 0.09);
+  --border-glow: rgba(99, 102, 241, 0.45);
   --indigo: #6366f1;
   --purple: #a855f7;
   --cyan: #06b6d4;
@@ -32,11 +32,11 @@ BASE_STYLE = """
 [data-theme="light"] {
   --bg: #f8fafc;
   --bg-gradient: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.08) 0%, rgba(248, 250, 252, 1) 75%);
-  --card: rgba(255, 255, 255, 0.9);
+  --card: rgba(255, 255, 255, 0.92);
   --card-hover: #ffffff;
   --card-solid: #ffffff;
   --border: #e2e8f0;
-  --border-glow: rgba(99, 102, 241, 0.25);
+  --border-glow: rgba(99, 102, 241, 0.3);
   --text: #0f172a;
   --text-muted: #475569;
   --text-dim: #64748b;
@@ -56,6 +56,20 @@ body, html {
 
 a { color: var(--indigo); text-decoration: none; transition: all 0.2s; }
 a:hover { color: var(--cyan); }
+
+/* Custom Neon Passkey Emojis Styling */
+.emoji-icon {
+  width: 22px; height: 22px; vertical-align: -4px; border-radius: 6px;
+  display: inline-block; object-fit: cover;
+}
+.emoji-icon-md {
+  width: 32px; height: 32px; vertical-align: -6px; border-radius: 8px;
+  display: inline-block; object-fit: cover;
+}
+.emoji-icon-lg {
+  width: 52px; height: 52px; border-radius: 14px; display: inline-block; object-fit: cover;
+  border: 1px solid rgba(168, 85, 247, 0.35); box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+}
 
 .nav-bar {
   display: flex;
@@ -136,14 +150,14 @@ a:hover { color: var(--cyan); }
 .badge-neon {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
+  gap: 8px;
+  padding: 5px 14px;
   border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.76rem;
+  font-weight: 800;
   font-family: var(--mono);
   background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  border: 1px solid rgba(99, 102, 241, 0.35);
   color: #818cf8;
 }
 
@@ -158,6 +172,7 @@ a:hover { color: var(--cyan); }
 .glass-card:hover {
   border-color: var(--border-glow);
   background: var(--card-hover);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
 }
 
 @media (max-width: 768px) {
@@ -171,17 +186,18 @@ a:hover { color: var(--cyan); }
 NAV_BAR = """
 <header class="nav-bar">
   <a href="/" class="nav-brand">
-    <img src="/static/passkey.png" alt="Passkey Logo">
+    <img src="/static/emojis/passkey.png" alt="Passkey Logo">
     <span>PASSKEY</span>
   </a>
   <div class="nav-links">
-    <a href="/commands">Commands</a>
-    <a href="/domain">Threat Scanner</a>
-    <a href="/stats">Live Telemetry</a>
-    <a href="/manage">Dashboard</a>
+    <a href="/commands"><img src="/static/emojis/shield.png" class="emoji-icon" alt=""> Commands</a>
+    <a href="/domain"><img src="/static/emojis/warn.png" class="emoji-icon" alt=""> Threat Scanner</a>
+    <a href="/stats"><img src="/static/emojis/verified.png" class="emoji-icon" alt=""> Telemetry</a>
+    <a href="/manage"><img src="/static/emojis/lock.png" class="emoji-icon" alt=""> Dashboard</a>
     <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">🌓 Theme</button>
     <a href="https://discord.com/oauth2/authorize?client_id=1452522495965134908&permissions=1395293285622&integration_type=0&scope=bot+applications.commands" target="_blank" class="nav-btn">
-      <span>+ Add to Discord</span>
+      <img src="/static/emojis/passkey.png" style="width:20px;height:20px;border-radius:4px;" alt="">
+      <span>Add to Discord</span>
     </a>
   </div>
 </header>
@@ -205,7 +221,7 @@ FOOTER = """
   <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:32px;margin-bottom:40px;">
     <div>
       <div style="display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.1rem;color:var(--text);margin-bottom:12px;">
-        <img src="/static/passkey.png" alt="Logo" style="width:28px;height:28px;border-radius:8px;">
+        <img src="/static/emojis/passkey.png" alt="Logo" style="width:28px;height:28px;border-radius:8px;">
         <span>PASSKEY GATEKEEPER</span>
       </div>
       <p style="font-size:0.84rem;color:var(--text-dim);line-height:1.6;">
@@ -215,17 +231,17 @@ FOOTER = """
     <div>
       <div style="font-weight:800;color:var(--text);margin-bottom:12px;font-size:0.9rem;">GATEKEEPER</div>
       <div style="display:flex;flex-direction:column;gap:8px;font-size:0.85rem;">
-        <a href="/commands">Slash Commands</a>
-        <a href="/stats">Global Network Status</a>
-        <a href="/domain">Security Threat Scanner</a>
-        <a href="/manage">Server Dashboard</a>
+        <a href="/commands"><img src="/static/emojis/shield.png" class="emoji-icon" alt=""> Slash Commands</a>
+        <a href="/stats"><img src="/static/emojis/verified.png" class="emoji-icon" alt=""> Global Telemetry</a>
+        <a href="/domain"><img src="/static/emojis/warn.png" class="emoji-icon" alt=""> Threat Scanner</a>
+        <a href="/manage"><img src="/static/emojis/lock.png" class="emoji-icon" alt=""> Server Dashboard</a>
       </div>
     </div>
     <div>
       <div style="font-weight:800;color:var(--text);margin-bottom:12px;font-size:0.9rem;">RESOURCES</div>
       <div style="display:flex;flex-direction:column;gap:8px;font-size:0.85rem;">
-        <a href="https://discord.com/oauth2/authorize?client_id=1452522495965134908&permissions=1395293285622&integration_type=0&scope=bot+applications.commands" target="_blank">Invite Bot</a>
-        <a href="https://passkey-verify.onrender.com/verify">Verification Gateway</a>
+        <a href="https://discord.com/oauth2/authorize?client_id=1452522495965134908&permissions=1395293285622&integration_type=0&scope=bot+applications.commands" target="_blank"><img src="/static/emojis/passkey.png" class="emoji-icon" alt=""> Invite Bot</a>
+        <a href="https://passkey-verify.onrender.com/verify"><img src="/static/emojis/verified.png" class="emoji-icon" alt=""> Verification Gateway</a>
         <a href="/tos">Terms of Service</a>
         <a href="/privacy">Privacy Policy</a>
       </div>
