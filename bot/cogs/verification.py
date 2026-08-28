@@ -686,8 +686,18 @@ class MultiStepSetupWizardView(discord.ui.View):
             self.add_item(btn_deploy)
 
     def get_step_embed(self) -> discord.Embed:
+        passkey_emoji = Emojis.get("passkey", self.bot)
+        shield_emoji = Emojis.get("shield", self.bot)
+        verified_emoji = Emojis.get("verified", self.bot)
+        otp_emoji = Emojis.get("otp", self.bot)
+        biometric_emoji = Emojis.get("biometric", self.bot)
+        pattern_emoji = Emojis.get("pattern", self.bot)
+        social_emoji = Emojis.get("social", self.bot)
+        alt_emoji = Emojis.get("alt", self.bot)
+        lock_emoji = Emojis.get("lock", self.bot)
+
         embed = discord.Embed(
-            title=f"🧙 Passkey Interactive Setup Wizard [Step {self.current_step}/{self.total_steps}]",
+            title=f"{passkey_emoji} Passkey Setup Wizard [Step {self.current_step}/{self.total_steps}]",
             color=0x6366F1
         )
         if self.guild.icon:
@@ -695,17 +705,17 @@ class MultiStepSetupWizardView(discord.ui.View):
 
         if self.current_step == 1:
             embed.description = (
-                "### 1️⃣ Choose Verification Method\n"
+                "### 1️⃣ Choose Verification Engine\n"
                 "Select one of the **9 advanced verification modes**:\n\n"
-                "• **🌐 Web Portal**: Cloudflare Turnstile CAPTCHA + Anti-Alt IP checks.\n"
-                "• **📱 Biometric Passkey**: Hardware Touch ID / Face ID / WebAuthn.\n"
-                "• **✉️ Email OTP**: 6-digit one-time code to user's email.\n"
-                "• **🖼️ Image Visual CAPTCHA**: In-Discord distorted character puzzle.\n"
-                "• **🎮 Emoji Sequence**: 3-symbol pattern button matching game.\n"
-                "• **🔗 Social Check**: Requires linked Steam, YouTube, GitHub, etc.\n"
-                "• **🔢 Math CAPTCHA**: Quick arithmetic modal challenge.\n"
-                "• **📝 Rules Agreement**: Server rules confirmation modal.\n"
-                "• **⚡ 1-Click Button**: Instant click access.\n\n"
+                f"• **{verified_emoji} Web Portal**: Cloudflare Turnstile CAPTCHA + Anti-Alt IP.\n"
+                f"• **{biometric_emoji} Biometric Passkey**: Hardware Touch ID / Face ID / WebAuthn.\n"
+                f"• **{otp_emoji} Email OTP**: 6-digit one-time code to member email.\n"
+                f"• **{lock_emoji} Image Visual CAPTCHA**: In-Discord distorted character puzzle.\n"
+                f"• **{pattern_emoji} Emoji Sequence**: 3-symbol pattern button matching game.\n"
+                f"• **{social_emoji} Social Check**: Requires linked Steam, YouTube, GitHub, etc.\n"
+                f"• **{shield_emoji} Math CAPTCHA**: Quick arithmetic modal challenge.\n"
+                f"• **{lock_emoji} Rules Agreement**: Server rules confirmation modal.\n"
+                f"• **{passkey_emoji} 1-Click Button**: Instant click access.\n\n"
                 f"👉 **Current Selection**: `{self.selected_mode.upper()}`"
             )
         elif self.current_step == 2:
@@ -717,7 +727,7 @@ class MultiStepSetupWizardView(discord.ui.View):
             )
         elif self.current_step == 3:
             embed.description = (
-                "### 3️⃣ Anti-Alt Account Action Policy\n"
+                f"### 3️⃣ {alt_emoji} Anti-Alt Account Action Policy\n"
                 "What should the bot do when a duplicate IP or Email is detected?\n\n"
                 "• **⚠️ Quarantine Both Accounts**: Assigns `@Quarantined` to freeze both accounts for admin review.\n"
                 "• **📋 Log & Alert Only**: Sends security audit log to staff, but allows join.\n"
@@ -730,7 +740,7 @@ class MultiStepSetupWizardView(discord.ui.View):
             v_text = self.selected_verify_chan.mention if self.selected_verify_chan else "`Auto-create #verify`"
             l_text = self.selected_log_chan.mention if self.selected_log_chan else "`Auto-create #passkey-logs`"
             embed.description = (
-                "### 4️⃣ Channel Configuration\n"
+                f"### 4️⃣ {shield_emoji} Channel Configuration\n"
                 "Select where members verify and where audit logs will be sent:\n\n"
                 f"• **Verification Channel**: {v_text}\n"
                 f"• **Security Log Channel**: {l_text}\n\n"
@@ -740,10 +750,10 @@ class MultiStepSetupWizardView(discord.ui.View):
             v_text = self.selected_verify_chan.mention if self.selected_verify_chan else "`Auto-create #verify`"
             l_text = self.selected_log_chan.mention if self.selected_log_chan else "`Auto-create #passkey-logs`"
             embed.description = (
-                "### 5️⃣ Minimum Discord Account Age & Review\n"
+                f"### 5️⃣ {shield_emoji} Minimum Account Age & Ready to Deploy\n"
                 "Filter out newly created raid accounts under a certain age:\n\n"
                 f"• **Account Age**: `{self.selected_age} days`\n\n"
-                "📋 **Configuration Summary Ready to Deploy**:\n"
+                "📋 **Configuration Summary**:\n"
                 f"• **Method**: `{self.selected_mode.upper()}`\n"
                 f"• **Language**: `{self.selected_lang.upper()}`\n"
                 f"• **Anti-Alt Policy**: `{self.selected_antialt.upper()}`\n"
@@ -751,7 +761,7 @@ class MultiStepSetupWizardView(discord.ui.View):
                 f"• **Log Channel**: {l_text}\n"
                 f"• **Min Age**: `{self.selected_age} days`\n"
                 "• **Attempt Limit**: `5 attempts (3 strikes -> Kick / Ban)`\n\n"
-                "Click **🚀 Finish & Deploy Setup** to activate Passkey Gatekeeper!"
+                f"Click **{passkey_emoji} Finish & Deploy Setup** to activate Passkey Gatekeeper!"
             )
 
         embed.set_footer(text="Use ◀️ and ▶️ buttons to navigate between steps • Passkey")
@@ -907,15 +917,19 @@ class MultiStepSetupWizardView(discord.ui.View):
             await self.bot.db.set_guild_config(guild.id, "min_age_days", self.selected_age)
 
         # 5. Post Verification Embed to #verify
+        passkey_emoji = Emojis.get("passkey", self.bot)
+        shield_emoji = Emojis.get("shield", self.bot)
+        verified_emoji = Emojis.get("verified", self.bot)
+
         embed = discord.Embed(
-            title="🔑 Passkey Server Gatekeeper",
+            title=f"{passkey_emoji} Passkey Server Gatekeeper",
             description=(
                 f"Welcome to **{guild.name}**!\n\n"
                 "To prevent automated raid bots and maintain community safety, "
                 "please click the **Click to Verify** button below to complete verification.\n\n"
                 f"• **Verification Method**: `{self.selected_mode.upper()}`\n"
                 f"• **Language**: `{self.selected_lang.upper()}`\n"
-                "• **Instant Access**: Unlocks full access to all member channels immediately."
+                f"• **Instant Access**: {verified_emoji} Unlocks full access to all member channels immediately."
             ),
             color=0x6366F1
         )
@@ -931,8 +945,8 @@ class MultiStepSetupWizardView(discord.ui.View):
 
         # 6. Confirmation message
         summary_embed = discord.Embed(
-            title="🎉 Passkey Gatekeeper Deployed Successfully!",
-            description="Your server is now protected by Passkey Zero-Trust Security Network.",
+            title=f"{verified_emoji} Passkey Gatekeeper Deployed Successfully!",
+            description=f"{shield_emoji} Your server is now protected by Passkey Zero-Trust Security Network.",
             color=0x10B981
         )
         summary_embed.add_field(name="Verification Channel", value=verify_channel.mention, inline=True)

@@ -15,6 +15,7 @@ import logging
 import discord
 from discord.ext import commands
 from discord import app_commands
+from utils.emojis import Emojis
 
 log = logging.getLogger("passkey.automod")
 
@@ -48,9 +49,10 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
         if not chan:
             return
 
+        warn_emoji = Emojis.get("warn", self.bot)
         embed = discord.Embed(
-            title=f"🚨 AutoMod Alert — {rule}",
-            description=f"**Offender:** {member.mention} (`{member.id}`)\n**Action:** Message Blocked\n**Details:** {reason}",
+            title=f"{warn_emoji} AutoMod Security Alert — {rule}",
+            description=f"**Offender:** {member.mention} (`{member.id}`)\n**Action:** Message Blocked & Logged\n**Details:** {reason}",
             color=0xEF4444,
             timestamp=datetime.datetime.now(datetime.timezone.utc)
         )
@@ -89,51 +91,54 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
                         await message.delete()
                     except Exception:
                         pass
-                    # Apply 1 hour timeout for scam attempt
                     try:
                         await member.timeout(datetime.timedelta(hours=1), reason="[AutoMod] Malicious / Phishing link detected")
                     except Exception:
                         pass
                     await self.log_violation(message.guild, member, "Anti-Phishing", f"Posted suspected phishing link containing `{bad_kw}` (Applied 1h Timeout)", message.content)
                     try:
-                        await message.channel.send(f"🛡️ {member.mention}, posting malicious or phishing links is strictly prohibited! (Timed out)", delete_after=5)
+                        shield_emoji = Emojis.get("shield", self.bot)
+                        await message.channel.send(f"{shield_emoji} {member.mention}, posting malicious or phishing links is strictly prohibited!", delete_after=5)
                     except Exception:
                         pass
                     return
 
-        # 2. Anti-Invite Check
+        # 2. Anti-Invite Links Check
         if config.get("automod_invites", 1):
             if INVITE_REGEX.search(message.content):
                 try:
                     await message.delete()
                 except Exception:
                     pass
-                await self.log_violation(message.guild, member, "Anti-Invite", "Posted unauthorized Discord invite link.", message.content)
+                await self.log_violation(message.guild, member, "Anti-Invite", "Posted unauthorized Discord server invite link", message.content)
                 try:
-                    await message.channel.send(f"⚠️ {member.mention}, Discord invite links are not allowed here.", delete_after=5)
+                    shield_emoji = Emojis.get("shield", self.bot)
+                    await message.channel.send(f"{shield_emoji} {member.mention}, server invite links are not permitted here.", delete_after=5)
                 except Exception:
                     pass
                 return
 
-        # 3. Anti-Mass Mention Check
+        # 3. Anti-Mass Mentions Check
         if config.get("automod_mentions", 1):
-            if len(message.mentions) >= 5 or (("@everyone" in message.content or "@here" in message.content) and not member.guild_permissions.mention_everyone):
+            mentions_count = len(message.mentions) + len(message.role_mentions)
+            if mentions_count >= 5 or message.mention_everyone:
                 try:
                     await message.delete()
                 except Exception:
                     pass
                 try:
-                    await member.timeout(datetime.timedelta(minutes=10), reason="[AutoMod] Mass mention spam")
+                    await member.timeout(datetime.timedelta(minutes=10), reason="[AutoMod] Mass mentions spam")
                 except Exception:
                     pass
-                await self.log_violation(message.guild, member, "Anti-Mass-Mention", f"Attempted to mention {len(message.mentions)} members or @everyone", message.content)
+                await self.log_violation(message.guild, member, "Anti-Mass Mention", f"Pinged {mentions_count} users/roles (Timed out 10m)", message.content)
                 try:
-                    await message.channel.send(f"⚠️ {member.mention}, mass mentions are prohibited! (Timed out for 10m)", delete_after=5)
+                    warn_emoji = Emojis.get("warn", self.bot)
+                    await message.channel.send(f"{warn_emoji} {member.mention}, mass pinging members or roles is prohibited.", delete_after=5)
                 except Exception:
                     pass
                 return
 
-        # 4. Anti-Spam / Rate-Limit Check
+        # 4. Anti-Spam (Burst Rate-Limit & Repeat Flood)
         if config.get("automod_spam", 1):
             now = time.time()
             guild_id = message.guild.id
@@ -144,14 +149,12 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
             if user_id not in self.user_message_history[guild_id]:
                 self.user_message_history[guild_id][user_id] = []
 
+            # Purge messages older than 5 seconds
             history = self.user_message_history[guild_id][user_id]
-            # Keep only messages from the last 5 seconds
             history = [(ts, txt) for ts, txt in history if now - ts < 5.0]
             history.append((now, message.content))
             self.user_message_history[guild_id][user_id] = history
 
-            # Check 1: More than 5 messages in 4 seconds
-            # Check 2: Same message repeated 3 times in 5 seconds
             is_fast_spam = len(history) >= 5
             is_repeat_spam = sum(1 for _, txt in history if txt.strip() == message.content.strip()) >= 3 and len(message.content.strip()) > 3
 
@@ -167,7 +170,8 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
                 self.user_message_history[guild_id][user_id] = []
                 await self.log_violation(message.guild, member, "Anti-Spam", "Flooding channels with repetitive/fast messages (Timed out 2m)", message.content)
                 try:
-                    await message.channel.send(f"🛑 {member.mention}, slow down! Spamming is not permitted.", delete_after=5)
+                    warn_emoji = Emojis.get("warn", self.bot)
+                    await message.channel.send(f"{warn_emoji} {member.mention}, slow down! Fast message spamming is not permitted.", delete_after=5)
                 except Exception:
                     pass
                 return
@@ -190,8 +194,11 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
         antialt = "🟢 Enabled" if config.get("antialt_enabled", 1) else "🔴 Disabled"
         min_age = f"**{config.get('min_age_days', 0)} days**"
 
+        shield_emoji = Emojis.get("shield", self.bot)
+        passkey_emoji = Emojis.get("passkey", self.bot)
+
         embed = discord.Embed(
-            title=f"🛡️ Passkey AutoMod & Security Shields — {guild.name}",
+            title=f"{shield_emoji} Passkey AutoMod & Security Shields — {guild.name}",
             description="Active real-time automated defense shields protecting your server:",
             color=0x6366F1
         )
@@ -202,7 +209,7 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
         embed.add_field(name="Anti-Alt Account Shield", value=antialt, inline=True)
         embed.add_field(name="Minimum Account Age", value=min_age, inline=True)
 
-        embed.set_footer(text="Use .automod-toggle <feature> or /automod_toggle to enable/disable shields.")
+        embed.set_footer(text="Use .automod_toggle <feature> <on/off> to manage shields.")
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name="automod_toggle", aliases=["automod-toggle"])
@@ -233,7 +240,12 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
             "mentions": "automod_mentions"
         }
         if feature not in key_map:
-            await ctx.send("❌ Valid features: `spam`, `invites`, `phishing`, `mentions`", ephemeral=True)
+            embed = discord.Embed(
+                title="❌ Invalid Feature",
+                description="Valid features to toggle: `spam`, `invites`, `phishing`, `mentions`",
+                color=0xEF4444
+            )
+            await ctx.send(embed=embed, ephemeral=True)
             return
 
         db_key = key_map[feature]
@@ -243,7 +255,13 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
             await self.bot.db.set_guild_config(ctx.guild.id, db_key, is_on)
 
         state_str = "ENABLED 🟢" if is_on else "DISABLED 🔴"
-        await ctx.send(f"🛡️ **AutoMod Shield `{feature.upper()}` is now {state_str}** for this server.")
+        shield_emoji = Emojis.get("shield", self.bot)
+        embed = discord.Embed(
+            title=f"{shield_emoji} Shield Updated — {feature.upper()}",
+            description=f"AutoMod shield **`{feature.upper()}`** is now **{state_str}** for **{ctx.guild.name}**.",
+            color=0x10B981 if is_on else 0xEF4444
+        )
+        await ctx.send(embed=embed)
 
     @commands.hybrid_command(name="lockdown")
     @commands.has_permissions(administrator=True)
@@ -258,13 +276,15 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
         channel = ctx.channel
         guild = ctx.guild
         default_role = guild.default_role
+        lock_emoji = Emojis.get("lock", self.bot)
+        unlock_emoji = Emojis.get("unlock", self.bot)
 
         if action.lower() in ["on", "enable"]:
             overwrites = channel.overwrites_for(default_role)
             overwrites.send_messages = False
             await channel.set_permissions(default_role, overwrite=overwrites, reason=f"[Emergency Lockdown] by {ctx.author}")
             embed = discord.Embed(
-                title="🔒 Channel Locked Down",
+                title=f"{lock_emoji} Channel Locked Down",
                 description="This channel has been placed under emergency lockdown by administrators. Sending messages is temporarily disabled.",
                 color=0xEF4444
             )
@@ -274,7 +294,7 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
             overwrites.send_messages = None
             await channel.set_permissions(default_role, overwrite=overwrites, reason=f"[Lockdown Lifted] by {ctx.author}")
             embed = discord.Embed(
-                title="🔓 Channel Lockdown Lifted",
+                title=f"{unlock_emoji} Channel Lockdown Lifted",
                 description="Emergency lockdown has been lifted. Normal chatting may resume.",
                 color=0x10B981
             )

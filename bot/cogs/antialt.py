@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Passkey Bot — Anti-Alt & Duplicate Account Detection."""
+"""Passkey Bot — Anti-Alt & Duplicate Account Detection with Custom Emoji Embeds."""
 import discord
 from discord.ext import commands
 from discord import app_commands
 import logging
+from utils.emojis import Emojis
 
 log = logging.getLogger("passkey.antialt")
 
@@ -29,8 +30,20 @@ class AntiAlt(commands.Cog, name="Anti-Alt Shield"):
         if self.bot.db:
             await self.bot.db.set_guild_config(ctx.guild.id, "antialt_enabled", enabled)
 
-        status = "ENABLED 🟢 (Protecting against duplicate alt accounts)" if enabled else "DISABLED 🔴"
-        await ctx.send(f"🛡️ **Anti-Alt Protection is now {status}** for this server.")
+        alt_emoji = Emojis.get("alt", self.bot)
+        shield_emoji = Emojis.get("shield", self.bot)
+        status_str = "ENABLED 🟢" if enabled else "DISABLED 🔴"
+        color = 0x10B981 if enabled else 0xEF4444
+
+        embed = discord.Embed(
+            title=f"{alt_emoji} Anti-Alt Account Shield — {status_str}",
+            description=(
+                f"{shield_emoji} **Real-time duplicate IP & verified email checking is now {status_str.lower()}** for **{ctx.guild.name}**.\n\n"
+                "When active, Passkey intercepts duplicate fingerprints and enforces your server's chosen Anti-Alt policy (Quarantine, Log, Kick, or Ban)."
+            ),
+            color=color
+        )
+        await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(AntiAlt(bot))

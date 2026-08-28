@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Passkey Bot — Comprehensive Moderation Suite.
+Passkey Bot — Comprehensive Moderation Suite with Custom Neon Emoji Embeds.
 Commands:
-- timeout / mute (Discord native timeout with flexible duration like 10m, 1h, 1d)
+- timeout / mute
 - untimeout / unmute
 - kick, ban, unban
 - warn, warnings, clearwarns
-- purge / clear (with optional user filter)
+- purge / clear
 - slowmode, lock, unlock
 """
 import re
@@ -15,6 +15,7 @@ import logging
 import discord
 from discord.ext import commands
 from discord import app_commands
+from utils.emojis import Emojis
 
 log = logging.getLogger("passkey.moderation")
 
@@ -75,36 +76,41 @@ class Moderation(commands.Cog, name="Moderation"):
     async def timeout(self, ctx: commands.Context, member: discord.Member, duration: str = "10m", *, reason: str = "No reason provided"):
         """Timeout a member to temporarily restrict them from speaking or reacting."""
         if member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
-            await ctx.send("❌ You cannot timeout someone with an equal or higher role than you.", ephemeral=True)
+            embed = discord.Embed(title="❌ Permission Denied", description="You cannot timeout someone with an equal or higher role than you.", color=0xEF4444)
+            await ctx.send(embed=embed, ephemeral=True)
             return
 
         try:
             delta = parse_duration(duration)
         except ValueError as e:
-            await ctx.send(f"❌ {e}", ephemeral=True)
+            embed = discord.Embed(title="❌ Invalid Duration", description=str(e), color=0xEF4444)
+            await ctx.send(embed=embed, ephemeral=True)
             return
 
         if delta > datetime.timedelta(days=28):
-            await ctx.send("❌ Maximum timeout duration is 28 days.", ephemeral=True)
+            embed = discord.Embed(title="❌ Duration Too Long", description="Maximum timeout duration is 28 days.", color=0xEF4444)
+            await ctx.send(embed=embed, ephemeral=True)
             return
 
         try:
             await member.timeout(delta, reason=f"[{ctx.author}] {reason}")
+            warn_emoji = Emojis.get("warn", self.bot)
             embed = discord.Embed(
-                title="⏳ Member Timed Out",
+                title=f"{warn_emoji} Member Timed Out",
                 description=f"**User:** {member.mention} (`{member.id}`)\n**Duration:** `{duration}`\n**Reason:** {reason}\n**Moderator:** {ctx.author.mention}",
                 color=0xF59E0B
             )
             await ctx.send(embed=embed)
             await self.log_mod_action(
                 ctx.guild,
-                "⏳ Moderation: Member Timed Out",
+                f"{warn_emoji} Moderation: Member Timed Out",
                 f"**User:** {member.mention} (`{member.id}`)\n**Duration:** `{duration}`\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}",
                 0xF59E0B,
                 member.display_avatar.url
             )
         except Exception as e:
-            await ctx.send(f"❌ Failed to timeout member: {e}", ephemeral=True)
+            embed = discord.Embed(title="❌ Action Failed", description=f"Failed to timeout member: {e}", color=0xEF4444)
+            await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="untimeout", aliases=["unmute"])
     @commands.has_permissions(moderate_members=True)
@@ -114,15 +120,22 @@ class Moderation(commands.Cog, name="Moderation"):
         """Remove an active timeout from a member."""
         try:
             await member.timeout(None, reason=f"[{ctx.author}] {reason}")
-            await ctx.send(f"✅ Timeout removed for **{member.display_name}**.")
+            verified_emoji = Emojis.get("verified", self.bot)
+            embed = discord.Embed(
+                title=f"{verified_emoji} Timeout Removed",
+                description=f"Timeout restriction removed for **{member.display_name}**.",
+                color=0x10B981
+            )
+            await ctx.send(embed=embed)
             await self.log_mod_action(
                 ctx.guild,
-                "🔊 Moderation: Timeout Lifted",
+                f"{verified_emoji} Moderation: Timeout Lifted",
                 f"**User:** {member.mention}\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}",
                 0x10B981
             )
         except Exception as e:
-            await ctx.send(f"❌ Failed to lift timeout: {e}", ephemeral=True)
+            embed = discord.Embed(title="❌ Action Failed", description=f"Failed to lift timeout: {e}", color=0xEF4444)
+            await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="kick")
     @commands.has_permissions(kick_members=True)
@@ -131,200 +144,137 @@ class Moderation(commands.Cog, name="Moderation"):
     async def kick(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
         """Kick a member from the server."""
         if member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
-            await ctx.send("❌ You cannot kick someone with an equal or higher role than you.", ephemeral=True)
+            embed = discord.Embed(title="❌ Permission Denied", description="You cannot kick someone with an equal or higher role than you.", color=0xEF4444)
+            await ctx.send(embed=embed, ephemeral=True)
             return
 
         try:
             await member.kick(reason=f"[{ctx.author}] {reason}")
-            await ctx.send(f"👢 Kicked **{member.display_name}** | Reason: {reason}")
+            warn_emoji = Emojis.get("warn", self.bot)
+            embed = discord.Embed(
+                title=f"{warn_emoji} Member Kicked",
+                description=f"**User:** {member.name} (`{member.id}`)\n**Reason:** {reason}\n**Moderator:** {ctx.author.mention}",
+                color=0xF97316
+            )
+            await ctx.send(embed=embed)
             await self.log_mod_action(
                 ctx.guild,
-                "👢 Moderation: Member Kicked",
+                f"{warn_emoji} Moderation: Member Kicked",
                 f"**User:** {member.name} (`{member.id}`)\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}",
                 0xF97316
             )
         except Exception as e:
-            await ctx.send(f"❌ Failed to kick member: {e}", ephemeral=True)
+            embed = discord.Embed(title="❌ Action Failed", description=f"Failed to kick member: {e}", color=0xEF4444)
+            await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="ban")
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
-    @app_commands.describe(member="Member to ban", reason="Reason for ban", delete_days="Days of message history to delete (0-7)")
-    async def ban(self, ctx: commands.Context, member: discord.Member, delete_days: int = 0, *, reason: str = "No reason provided"):
-        """Ban a member from the server."""
-        if member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
-            await ctx.send("❌ You cannot ban someone with an equal or higher role than you.", ephemeral=True)
+    @app_commands.describe(user="User to ban", reason="Reason for ban", delete_days="Number of days of messages to delete (0-7)")
+    async def ban(self, ctx: commands.Context, user: discord.User, delete_days: int = 0, *, reason: str = "No reason provided"):
+        """Permanently ban a user from the server."""
+        member = ctx.guild.get_member(user.id)
+        if member and member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
+            embed = discord.Embed(title="❌ Permission Denied", description="You cannot ban someone with an equal or higher role than you.", color=0xEF4444)
+            await ctx.send(embed=embed, ephemeral=True)
             return
 
         try:
-            await member.ban(reason=f"[{ctx.author}] {reason}", delete_message_days=min(max(delete_days, 0), 7))
-            await ctx.send(f"🔨 Banned **{member.display_name}** | Reason: {reason}")
+            await ctx.guild.ban(user, reason=f"[{ctx.author}] {reason}", delete_message_days=min(max(delete_days, 0), 7))
+            ban_emoji = Emojis.get("ban", self.bot)
+            embed = discord.Embed(
+                title=f"{ban_emoji} Member Permanently Banned",
+                description=f"**User:** {user} (`{user.id}`)\n**Reason:** {reason}\n**Moderator:** {ctx.author.mention}",
+                color=0xEF4444
+            )
+            await ctx.send(embed=embed)
             await self.log_mod_action(
                 ctx.guild,
-                "🔨 Moderation: Member Banned",
-                f"**User:** {member.name} (`{member.id}`)\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}",
+                f"{ban_emoji} Moderation: Member Banned",
+                f"**User:** {user} (`{user.id}`)\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}",
                 0xEF4444
             )
         except Exception as e:
-            await ctx.send(f"❌ Failed to ban member: {e}", ephemeral=True)
-
-    @commands.hybrid_command(name="unban")
-    @commands.has_permissions(ban_members=True)
-    @commands.bot_has_permissions(ban_members=True)
-    @app_commands.describe(user_id="ID of user to unban", reason="Reason for unban")
-    async def unban(self, ctx: commands.Context, user_id: str, *, reason: str = "Unbanned by moderator"):
-        """Unban a user by their Discord User ID."""
-        try:
-            uid = int(user_id)
-            user = await self.bot.fetch_user(uid)
-            await ctx.guild.unban(user, reason=f"[{ctx.author}] {reason}")
-            await ctx.send(f"✅ Successfully unbanned **{user.name}** (`{uid}`).")
-            await self.log_mod_action(
-                ctx.guild,
-                "🔓 Moderation: User Unbanned",
-                f"**User:** {user.name} (`{uid}`)\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}",
-                0x10B981
-            )
-        except Exception as e:
-            await ctx.send(f"❌ Failed to unban: {e}", ephemeral=True)
+            embed = discord.Embed(title="❌ Action Failed", description=f"Failed to ban member: {e}", color=0xEF4444)
+            await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="warn")
-    @commands.has_permissions(manage_messages=True)
-    @app_commands.describe(member="Member to warn", reason="Reason for warning")
+    @commands.has_permissions(moderate_members=True)
+    @app_commands.describe(member="Member to warn", reason="Reason for warning strike")
     async def warn(self, ctx: commands.Context, member: discord.Member, *, reason: str = "Rule violation"):
-        """Issue an official warning to a member and record it in database."""
-        if not self.bot.db:
-            await ctx.send("❌ Database unavailable.", ephemeral=True)
+        """Issue a formal recorded warning strike to a member."""
+        if member.bot:
+            embed = discord.Embed(title="❌ Error", description="You cannot warn bot accounts.", color=0xEF4444)
+            await ctx.send(embed=embed, ephemeral=True)
             return
 
-        warn_id = await self.bot.db.add_warning(ctx.guild.id, member.id, ctx.author.id, reason)
-        all_warns = await self.bot.db.get_warnings(ctx.guild.id, member.id)
+        warn_count = 1
+        if self.bot.db:
+            await self.bot.db.add_warning(ctx.guild.id, member.id, ctx.author.id, reason)
+            warns = await self.bot.db.get_warnings(ctx.guild.id, member.id)
+            warn_count = len(warns)
 
+        warn_emoji = Emojis.get("warn", self.bot)
         embed = discord.Embed(
-            title="⚠️ Official Warning Issued",
-            description=f"**Target:** {member.mention} (`{member.id}`)\n**Reason:** {reason}\n**Moderator:** {ctx.author.mention}\n**Total Warnings:** `{len(all_warns)}`",
+            title=f"{warn_emoji} Warning Strike #{warn_count} Issued",
+            description=f"**User:** {member.mention} (`{member.id}`)\n**Reason:** {reason}\n**Moderator:** {ctx.author.mention}\n**Total Strikes:** `{warn_count}`",
             color=0xF59E0B
         )
-        embed.set_footer(text=f"Warning Case #{warn_id}")
         await ctx.send(embed=embed)
-
         await self.log_mod_action(
             ctx.guild,
-            f"⚠️ Moderation: Warning #{warn_id}",
-            f"**Target:** {member.mention}\n**Moderator:** {ctx.author.mention}\n**Reason:** {reason}\n**Total Infractions:** {len(all_warns)}",
-            0xF59E0B,
-            member.display_avatar.url
+            f"{warn_emoji} Moderation: Warning Strike #{warn_count}",
+            f"**User:** {member.mention}\n**Reason:** {reason}\n**Moderator:** {ctx.author.mention}",
+            0xF59E0B
         )
 
     @commands.hybrid_command(name="warnings", aliases=["warns"])
-    @commands.has_permissions(manage_messages=True)
-    @app_commands.describe(member="Member to view warnings for")
+    @commands.has_permissions(moderate_members=True)
+    @app_commands.describe(member="Member whose warning history to view")
     async def warnings(self, ctx: commands.Context, member: discord.Member):
-        """View warning history for a member."""
-        if not self.bot.db:
-            await ctx.send("❌ Database unavailable.", ephemeral=True)
-            return
+        """View complete infraction history for a member."""
+        warns = []
+        if self.bot.db:
+            warns = await self.bot.db.get_warnings(ctx.guild.id, member.id)
 
-        records = await self.bot.db.get_warnings(ctx.guild.id, member.id)
-        if not records:
-            await ctx.send(f"✨ **{member.display_name}** has a completely clean record with 0 warnings.", ephemeral=True)
+        warn_emoji = Emojis.get("warn", self.bot)
+        if not warns:
+            embed = discord.Embed(
+                title=f"📋 Infraction Record — {member.display_name}",
+                description="✅ Clean record! This member has 0 active warnings.",
+                color=0x10B981
+            )
+            await ctx.send(embed=embed)
             return
 
         embed = discord.Embed(
-            title=f"📋 Infraction History — {member.display_name}",
-            description=f"Total recorded infractions: **{len(records)}**",
+            title=f"{warn_emoji} Infraction Record — {member.display_name} ({len(warns)} Strikes)",
             color=0xF59E0B
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
-
-        for w in records[:10]:
-            ts_str = f"<t:{int(w.get('timestamp', 0))}:R>"
+        for i, w in enumerate(warns[-10:], 1):
             embed.add_field(
-                name=f"Case #{w.get('id')} • {ts_str}",
-                value=f"**Mod:** <@{w.get('moderator_id')}>\n**Reason:** {w.get('reason')}",
+                name=f"Strike #{i} • ID: `{w.get('id', i)}`",
+                value=f"**Reason:** {w.get('reason', 'N/A')}\n**Date:** <t:{int(w.get('created_at', 0))}:R>",
                 inline=False
             )
-
-        if len(records) > 10:
-            embed.set_footer(text=f"Showing recent 10 of {len(records)} warnings.")
         await ctx.send(embed=embed)
-
-    @commands.hybrid_command(name="clearwarns", aliases=["clearwarnings"])
-    @commands.has_permissions(administrator=True)
-    @app_commands.describe(member="Member to clear warnings for")
-    async def clear_warns(self, ctx: commands.Context, member: discord.Member):
-        """Clear all warnings for a member."""
-        if not self.bot.db:
-            await ctx.send("❌ Database unavailable.", ephemeral=True)
-            return
-
-        deleted = await self.bot.db.clear_warnings(ctx.guild.id, member.id)
-        await ctx.send(f"🧹 Cleared **{deleted}** warning(s) for {member.mention}.")
 
     @commands.hybrid_command(name="purge", aliases=["clear"])
     @commands.has_permissions(manage_messages=True)
-    @commands.bot_has_permissions(manage_messages=True, read_message_history=True)
-    @app_commands.describe(amount="Number of messages to delete (1-100)", member="Filter messages only from this member (optional)")
-    async def purge(self, ctx: commands.Context, amount: int = 10, member: discord.Member = None):
-        """Bulk delete messages in the current channel."""
-        if amount < 1 or amount > 100:
-            await ctx.send("❌ Amount must be between 1 and 100.", ephemeral=True)
-            return
-
-        if ctx.interaction:
-            await ctx.interaction.response.defer(ephemeral=True)
-
-        def check(m):
-            return member is None or m.author.id == member.id
-
-        deleted = await ctx.channel.purge(limit=amount, check=check)
-        msg_text = f"🧹 Successfully deleted **{len(deleted)}** message(s)."
-        if member:
-            msg_text += f" (Filtered by {member.mention})"
-
-        if ctx.interaction:
-            await ctx.interaction.followup.send(msg_text, ephemeral=True)
-        else:
-            msg = await ctx.send(msg_text)
-            await msg.delete(delay=4)
-
-    @commands.hybrid_command(name="slowmode")
-    @commands.has_permissions(manage_channels=True)
-    @commands.bot_has_permissions(manage_channels=True)
-    @app_commands.describe(seconds="Slowmode delay in seconds (0 to disable, max 21600)")
-    async def slowmode(self, ctx: commands.Context, seconds: int = 0):
-        """Set slowmode rate limit for the current channel."""
-        if seconds < 0 or seconds > 21600:
-            await ctx.send("❌ Seconds must be between 0 and 21600 (6 hours).", ephemeral=True)
-            return
-
-        await ctx.channel.edit(slowmode_delay=seconds)
-        if seconds == 0:
-            await ctx.send("⏱️ Slowmode has been **disabled** for this channel.")
-        else:
-            await ctx.send(f"⏱️ Slowmode set to **{seconds}s** per message.")
-
-    @commands.hybrid_command(name="lock")
-    @commands.has_permissions(manage_channels=True)
-    @commands.bot_has_permissions(manage_channels=True)
-    async def lock_channel(self, ctx: commands.Context):
-        """Lock the current channel so members cannot send messages."""
-        default_role = ctx.guild.default_role
-        overwrites = ctx.channel.overwrites_for(default_role)
-        overwrites.send_messages = False
-        await ctx.channel.set_permissions(default_role, overwrite=overwrites)
-        await ctx.send("🔒 Channel locked.")
-
-    @commands.hybrid_command(name="unlock")
-    @commands.has_permissions(manage_channels=True)
-    @commands.bot_has_permissions(manage_channels=True)
-    async def unlock_channel(self, ctx: commands.Context):
-        """Unlock the current channel."""
-        default_role = ctx.guild.default_role
-        overwrites = ctx.channel.overwrites_for(default_role)
-        overwrites.send_messages = None
-        await ctx.channel.set_permissions(default_role, overwrite=overwrites)
-        await ctx.send("🔓 Channel unlocked.")
+    @commands.bot_has_permissions(manage_messages=True)
+    @app_commands.describe(amount="Number of messages to delete (1-100)")
+    async def purge(self, ctx: commands.Context, amount: int = 10):
+        """Bulk-delete recent messages from the current channel."""
+        amount = min(max(amount, 1), 100)
+        await ctx.defer(ephemeral=True)
+        deleted = await ctx.channel.purge(limit=amount)
+        verified_emoji = Emojis.get("verified", self.bot)
+        embed = discord.Embed(
+            title=f"{verified_emoji} Messages Purged",
+            description=f"Successfully purged **{len(deleted)} messages** from {ctx.channel.mention}.",
+            color=0x10B981
+        )
+        await ctx.send(embed=embed, ephemeral=True)
 
 
 async def setup(bot):
