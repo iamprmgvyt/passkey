@@ -33,6 +33,12 @@ class Database:
         self.sqlite_conn = None
 
     async def connect(self):
+        # 1. Always initialize local SQLite fallback connection first
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self._init_sqlite)
+        log.info("Passkey local SQLite database initialized.")
+
+        # 2. Connect to Turso Cloud if configured
         if self.use_turso:
             try:
                 import libsql_client
@@ -42,14 +48,9 @@ class Database:
                 )
                 await self._init_turso_tables()
                 log.info(f"Connected to Turso Cloud SQLite: {self.turso_url}")
-                return
             except Exception as e:
-                log.error(f"Failed to connect to Turso Cloud ({e}). Falling back to local SQLite.")
+                log.error(f"Failed to connect to Turso Cloud ({e}). Using local SQLite.")
                 self.use_turso = False
-
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self._init_sqlite)
-        log.info("Passkey local SQLite database initialized successfully.")
 
     async def _init_turso_tables(self):
         tables = [
@@ -62,6 +63,7 @@ class Database:
                 verify_mode TEXT DEFAULT 'web',
                 language TEXT DEFAULT 'en',
                 antialt_enabled INTEGER DEFAULT 1,
+                antialt_action TEXT DEFAULT 'quarantine',
                 min_age_days INTEGER DEFAULT 0,
                 automod_spam INTEGER DEFAULT 1,
                 automod_invites INTEGER DEFAULT 1,
@@ -120,6 +122,7 @@ class Database:
             verify_mode TEXT DEFAULT 'web',
             language TEXT DEFAULT 'en',
             antialt_enabled INTEGER DEFAULT 1,
+            antialt_action TEXT DEFAULT 'quarantine',
             min_age_days INTEGER DEFAULT 0,
             automod_spam INTEGER DEFAULT 1,
             automod_invites INTEGER DEFAULT 1,
@@ -170,7 +173,7 @@ class Database:
             "verify_mode": "web",
             "language": "en",
             "antialt_enabled": 1,
-            "antialt_action": "quarantine",  # log, quarantine, kick, ban, ignore
+            "antialt_action": "quarantine",
             "min_age_days": 0,
             "automod_spam": 1,
             "automod_invites": 1,
@@ -185,33 +188,34 @@ class Database:
                     "SELECT * FROM guild_settings WHERE guild_id = ?",
                     [str(guild_id)]
                 )
-                if not res.rows:
-                    return default_cfg
-                row_dict = dict(zip(res.columns, res.rows[0]))
-                try:
-                    row_dict.update(json.loads(row_dict.get("config_json") or "{}"))
-                except Exception:
-                    pass
-                return row_dict
+                if res.rows:
+                    row_dict = dict(zip(res.columns, res.rows[0]))
+                    try:
+                        row_dict.update(json.loads(row_dict.get("config_json") or "{}"))
+                    except Exception:
+                        pass
+                    return row_dict
             except Exception as e:
                 log.error(f"Turso error in get_guild_config: {e}")
-                return default_cfg
 
-        def _get():
-            cur = self.sqlite_conn.cursor()
-            cur.execute("SELECT * FROM guild_settings WHERE guild_id = ?", (str(guild_id),))
-            row = cur.fetchone()
-            if not row:
-                return default_cfg
-            cfg = dict(row)
-            try:
-                cfg.update(json.loads(cfg.get("config_json") or "{}"))
-            except Exception:
-                pass
-            return cfg
+        if self.sqlite_conn:
+            def _get():
+                cur = self.sqlite_conn.cursor()
+                cur.execute("SELECT * FROM guild_settings WHERE guild_id = ?", (str(guild_id),))
+                row = cur.fetchone()
+                if not row:
+                    return default_cfg
+                cfg = dict(row)
+                try:
+                    cfg.update(json.loads(cfg.get("config_json") or "{}"))
+                except Exception:
+                    pass
+                return cfg
 
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _get)
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _get)
+
+        return default_cfg
 
     async def set_guild_config(self, guild_id: int, key: str, value: Any):
         direct_cols = [
@@ -262,37 +266,38 @@ class Database:
             except Exception as e:
                 log.error(f"Turso error in set_guild_config: {e}")
 
-        def _set():
-            cur = self.sqlite_conn.cursor()
-            cur.execute("SELECT * FROM guild_settings WHERE guild_id = ?", (str(guild_id),))
-            row = cur.fetchone()
-            
-            cfg_dict = {}
-            if row and row["config_json"]:
-                try:
-                    cfg_dict = json.loads(row["config_json"])
-                except Exception:
-                    pass
-            cfg_dict[key] = value
+        if self.sqlite_conn:
+            def _set():
+                cur = self.sqlite_conn.cursor()
+                cur.execute("SELECT * FROM guild_settings WHERE guild_id = ?", (str(guild_id),))
+                row = cur.fetchone()
+                
+                cfg_dict = {}
+                if row and row["config_json"]:
+                    try:
+                        cfg_dict = json.loads(row["config_json"])
+                    except Exception:
+                        pass
+                cfg_dict[key] = value
 
-            if row:
-                if key in direct_cols:
-                    cur.execute(f"UPDATE guild_settings SET {key} = ?, config_json = ? WHERE guild_id = ?", 
-                                (value, json.dumps(cfg_dict), str(guild_id)))
+                if row:
+                    if key in direct_cols:
+                        cur.execute(f"UPDATE guild_settings SET {key} = ?, config_json = ? WHERE guild_id = ?", 
+                                    (value, json.dumps(cfg_dict), str(guild_id)))
+                    else:
+                        cur.execute("UPDATE guild_settings SET config_json = ? WHERE guild_id = ?", 
+                                    (json.dumps(cfg_dict), str(guild_id)))
                 else:
-                    cur.execute("UPDATE guild_settings SET config_json = ? WHERE guild_id = ?", 
-                                (json.dumps(cfg_dict), str(guild_id)))
-            else:
-                if key in direct_cols:
-                    cur.execute(f"INSERT INTO guild_settings (guild_id, {key}, config_json) VALUES (?, ?, ?)", 
-                                (str(guild_id), value, json.dumps(cfg_dict)))
-                else:
-                    cur.execute("INSERT INTO guild_settings (guild_id, config_json) VALUES (?, ?)", 
-                                (str(guild_id), json.dumps(cfg_dict)))
-            self.sqlite_conn.commit()
+                    if key in direct_cols:
+                        cur.execute(f"INSERT INTO guild_settings (guild_id, {key}, config_json) VALUES (?, ?, ?)", 
+                                    (str(guild_id), value, json.dumps(cfg_dict)))
+                    else:
+                        cur.execute("INSERT INTO guild_settings (guild_id, config_json) VALUES (?, ?)", 
+                                    (str(guild_id), json.dumps(cfg_dict)))
+                self.sqlite_conn.commit()
 
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, _set)
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, _set)
 
     # --- Verification logs & Anti-Alt ---
 
@@ -310,20 +315,21 @@ class Database:
             except Exception as e:
                 log.error(f"Turso error in log_verification: {e}")
 
-        def _log():
-            cur = self.sqlite_conn.cursor()
-            cur.execute("""
-            INSERT INTO verification_logs (guild_id, user_id, verified_at, ip_hash, email, method, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'verified')
-            """, (str(guild_id), str(user_id), time.time(), ip_hash, email.lower().strip(), method))
-            cur.execute("""
-            INSERT INTO global_stats (key, val) VALUES ('total_verifications', 1)
-            ON CONFLICT(key) DO UPDATE SET val = val + 1
-            """)
-            self.sqlite_conn.commit()
+        if self.sqlite_conn:
+            def _log():
+                cur = self.sqlite_conn.cursor()
+                cur.execute("""
+                INSERT INTO verification_logs (guild_id, user_id, verified_at, ip_hash, email, method, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'verified')
+                """, (str(guild_id), str(user_id), time.time(), ip_hash, email.lower().strip(), method))
+                cur.execute("""
+                INSERT INTO global_stats (key, val) VALUES ('total_verifications', 1)
+                ON CONFLICT(key) DO UPDATE SET val = val + 1
+                """)
+                self.sqlite_conn.commit()
 
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, _log)
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, _log)
 
     async def check_alt_ip(self, guild_id: int, user_id: int, ip_hash: str) -> Optional[str]:
         if not ip_hash:
@@ -340,20 +346,22 @@ class Database:
                 return None
             except Exception as e:
                 log.error(f"Turso error in check_alt_ip: {e}")
-                return None
 
-        def _check():
-            cur = self.sqlite_conn.cursor()
-            cur.execute("""
-            SELECT user_id FROM verification_logs 
-            WHERE guild_id = ? AND ip_hash = ? AND user_id != ? 
-            ORDER BY id DESC LIMIT 1
-            """, (str(guild_id), ip_hash, str(user_id)))
-            row = cur.fetchone()
-            return row["user_id"] if row else None
+        if self.sqlite_conn:
+            def _check():
+                cur = self.sqlite_conn.cursor()
+                cur.execute("""
+                SELECT user_id FROM verification_logs 
+                WHERE guild_id = ? AND ip_hash = ? AND user_id != ? 
+                ORDER BY id DESC LIMIT 1
+                """, (str(guild_id), ip_hash, str(user_id)))
+                row = cur.fetchone()
+                return row["user_id"] if row else None
 
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _check)
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _check)
+
+        return None
 
     async def check_alt_email(self, guild_id: int, user_id: int, email: str) -> Optional[str]:
         if not email:
@@ -371,20 +379,22 @@ class Database:
                 return None
             except Exception as e:
                 log.error(f"Turso error in check_alt_email: {e}")
-                return None
 
-        def _check():
-            cur = self.sqlite_conn.cursor()
-            cur.execute("""
-            SELECT user_id FROM verification_logs 
-            WHERE guild_id = ? AND email = ? AND user_id != ? 
-            ORDER BY id DESC LIMIT 1
-            """, (str(guild_id), clean_email, str(user_id)))
-            row = cur.fetchone()
-            return row["user_id"] if row else None
+        if self.sqlite_conn:
+            def _check():
+                cur = self.sqlite_conn.cursor()
+                cur.execute("""
+                SELECT user_id FROM verification_logs 
+                WHERE guild_id = ? AND email = ? AND user_id != ? 
+                ORDER BY id DESC LIMIT 1
+                """, (str(guild_id), clean_email, str(user_id)))
+                row = cur.fetchone()
+                return row["user_id"] if row else None
 
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _check)
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _check)
+
+        return None
 
     # --- Warnings system ---
 
@@ -401,23 +411,25 @@ class Database:
                 return getattr(res, "last_insert_rowid", 1) or 1
             except Exception as e:
                 log.error(f"Turso error in add_warning: {e}")
-                return 1
 
-        def _add():
-            cur = self.sqlite_conn.cursor()
-            cur.execute("""
-            INSERT INTO warnings (guild_id, user_id, moderator_id, reason, timestamp)
-            VALUES (?, ?, ?, ?, ?)
-            """, (str(guild_id), str(user_id), str(moderator_id), reason, time.time()))
-            cur.execute("""
-            INSERT INTO global_stats (key, val) VALUES ('total_warnings', 1)
-            ON CONFLICT(key) DO UPDATE SET val = val + 1
-            """)
-            self.sqlite_conn.commit()
-            return cur.lastrowid
+        if self.sqlite_conn:
+            def _add():
+                cur = self.sqlite_conn.cursor()
+                cur.execute("""
+                INSERT INTO warnings (guild_id, user_id, moderator_id, reason, timestamp)
+                VALUES (?, ?, ?, ?, ?)
+                """, (str(guild_id), str(user_id), str(moderator_id), reason, time.time()))
+                cur.execute("""
+                INSERT INTO global_stats (key, val) VALUES ('total_warnings', 1)
+                ON CONFLICT(key) DO UPDATE SET val = val + 1
+                """)
+                self.sqlite_conn.commit()
+                return cur.lastrowid
 
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _add)
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _add)
+
+        return 1
 
     async def get_warnings(self, guild_id: int, user_id: int) -> List[Dict[str, Any]]:
         if self.use_turso:
@@ -429,19 +441,21 @@ class Database:
                 return [dict(zip(res.columns, row)) for row in res.rows]
             except Exception as e:
                 log.error(f"Turso error in get_warnings: {e}")
-                return []
 
-        def _get():
-            cur = self.sqlite_conn.cursor()
-            cur.execute("""
-            SELECT id, moderator_id, reason, timestamp FROM warnings
-            WHERE guild_id = ? AND user_id = ?
-            ORDER BY id ASC
-            """, (str(guild_id), str(user_id)))
-            return [dict(r) for r in cur.fetchall()]
+        if self.sqlite_conn:
+            def _get():
+                cur = self.sqlite_conn.cursor()
+                cur.execute("""
+                SELECT id, moderator_id, reason, timestamp FROM warnings
+                WHERE guild_id = ? AND user_id = ?
+                ORDER BY id ASC
+                """, (str(guild_id), str(user_id)))
+                return [dict(r) for r in cur.fetchall()]
 
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _get)
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _get)
+
+        return []
 
     async def clear_warnings(self, guild_id: int, user_id: int) -> int:
         if self.use_turso:
@@ -453,17 +467,19 @@ class Database:
                 return getattr(res, "rows_affected", 0) or 0
             except Exception as e:
                 log.error(f"Turso error in clear_warnings: {e}")
-                return 0
 
-        def _clear():
-            cur = self.sqlite_conn.cursor()
-            cur.execute("DELETE FROM warnings WHERE guild_id = ? AND user_id = ?", (str(guild_id), str(user_id)))
-            deleted = cur.rowcount
-            self.sqlite_conn.commit()
-            return deleted
+        if self.sqlite_conn:
+            def _clear():
+                cur = self.sqlite_conn.cursor()
+                cur.execute("DELETE FROM warnings WHERE guild_id = ? AND user_id = ?", (str(guild_id), str(user_id)))
+                deleted = cur.rowcount
+                self.sqlite_conn.commit()
+                return deleted
 
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _clear)
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _clear)
+
+        return 0
 
     async def delete_warning(self, warn_id: int, guild_id: int) -> bool:
         if self.use_turso:
@@ -475,17 +491,19 @@ class Database:
                 return (getattr(res, "rows_affected", 0) or 0) > 0
             except Exception as e:
                 log.error(f"Turso error in delete_warning: {e}")
-                return False
 
-        def _del():
-            cur = self.sqlite_conn.cursor()
-            cur.execute("DELETE FROM warnings WHERE id = ? AND guild_id = ?", (warn_id, str(guild_id)))
-            deleted = cur.rowcount > 0
-            self.sqlite_conn.commit()
-            return deleted
+        if self.sqlite_conn:
+            def _del():
+                cur = self.sqlite_conn.cursor()
+                cur.execute("DELETE FROM warnings WHERE id = ? AND guild_id = ?", (warn_id, str(guild_id)))
+                deleted = cur.rowcount > 0
+                self.sqlite_conn.commit()
+                return deleted
 
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _del)
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _del)
+
+        return False
 
     async def get_global_stats(self) -> dict:
         if self.use_turso:
@@ -494,13 +512,39 @@ class Database:
                 return {row[0]: row[1] for row in res.rows}
             except Exception as e:
                 log.error(f"Turso error in get_global_stats: {e}")
-                return {}
 
-        def _stats():
-            cur = self.sqlite_conn.cursor()
-            cur.execute("SELECT key, val FROM global_stats")
-            rows = cur.fetchall()
-            return {r["key"]: r["val"] for r in rows}
+        if self.sqlite_conn:
+            def _stats():
+                cur = self.sqlite_conn.cursor()
+                cur.execute("SELECT key, val FROM global_stats")
+                rows = cur.fetchall()
+                return {r["key"]: r["val"] for r in rows}
 
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _stats)
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, _stats)
+
+        return {}
+
+    async def get_total_verifications_count(self) -> int:
+        if self.use_turso:
+            try:
+                res = await self.turso_client.execute("SELECT val FROM global_stats WHERE key = 'total_verifications'")
+                if res.rows:
+                    return int(res.rows[0][0])
+            except Exception:
+                pass
+
+        if self.sqlite_conn:
+            try:
+                def _get():
+                    cur = self.sqlite_conn.cursor()
+                    cur.execute("SELECT val FROM global_stats WHERE key = 'total_verifications'")
+                    row = cur.fetchone()
+                    return int(row["val"]) if row else 0
+
+                loop = asyncio.get_event_loop()
+                return await loop.run_in_executor(None, _get)
+            except Exception:
+                return 0
+
+        return 0

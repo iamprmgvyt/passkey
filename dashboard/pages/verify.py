@@ -581,11 +581,17 @@ async def api_complete_verif(request: Request):
 
     try:
         await member.add_roles(verified_role, reason=f"[Passkey] {verif_method.capitalize()} Web Verification Completed")
-        if bot.db:
-            await bot.db.log_verification(guild.id, member.id, method=verif_method, ip_hash=client_ip)
-        return {"ok": True}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"ok": False, "detail": str(e)})
+        log.error(f"Failed to add verified role: {e}")
+        return JSONResponse(status_code=500, content={"ok": False, "detail": f"Discord Permission Error: Bot cannot assign role '{verified_role.name}'. Please make sure Passkey's bot role is higher than '{verified_role.name}' in Discord Server Settings."})
+
+    if bot.db:
+        try:
+            await bot.db.log_verification(guild.id, member.id, method=verif_method, ip_hash=client_ip)
+        except Exception as e:
+            log.warning(f"Failed to log verification in DB: {e}")
+
+    return {"ok": True}
 
 @router.post("/api/verify/email/send-otp")
 async def api_send_email_otp(request: Request):
@@ -708,8 +714,14 @@ async def api_verify_email_otp(request: Request):
 
     try:
         await member.add_roles(verified_role, reason="[Passkey] Email Verification Completed")
-        if bot.db:
-            await bot.db.log_verification(guild.id, member.id, method="email", email=otp_data["email"])
-        return {"ok": True}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"ok": False, "detail": str(e)})
+        log.error(f"Failed to add verified role: {e}")
+        return JSONResponse(status_code=500, content={"ok": False, "detail": f"Discord Permission Error: Bot cannot assign role '{verified_role.name}'. Please make sure Passkey's bot role is higher than '{verified_role.name}' in Discord Server Settings."})
+
+    if bot.db:
+        try:
+            await bot.db.log_verification(guild.id, member.id, method="email", email=otp_data["email"])
+        except Exception as e:
+            log.warning(f"Failed to log email verification in DB: {e}")
+
+    return {"ok": True}
