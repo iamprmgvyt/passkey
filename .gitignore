@@ -1,0 +1,22 @@
+# Environment variables & secrets
+.env
+.env.*
+
+# Python Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Local SQLite databases (Turso Cloud is used in production)
+*.db
+*.sqlite3
+
+# Logs & OS Files
+*.log
+.DS_Store
+Thumbs.db
