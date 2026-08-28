@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Passkey Bot — Core Client Implementation with Slash Command & Hybrid Support."""
+"""Passkey Bot — Core Client Implementation with Automatic Slash Command Sync."""
 import discord
 from discord.ext import commands
 import datetime
@@ -23,6 +23,7 @@ class PasskeyBot(commands.Bot):
         )
         self.start_time = datetime.datetime.now(datetime.timezone.utc)
         self.db = Database(Config.DATABASE_URL)
+        self.synced = False
 
     def uptime(self) -> datetime.timedelta:
         return datetime.datetime.now(datetime.timezone.utc) - self.start_time
@@ -52,5 +53,14 @@ class PasskeyBot(commands.Bot):
         await self.change_presence(activity=discord.Activity(
             type=discord.ActivityType.watching, name="over server gates • /help | .help"
         ))
+
+        # Automatic Global Slash Command Sync on Ready
+        if not self.synced:
+            try:
+                synced_cmds = await self.tree.sync()
+                self.synced = True
+                log.info(f"✅ Successfully synced {len(synced_cmds)} global Slash Commands with Discord!")
+            except Exception as e:
+                log.warning(f"Auto-syncing slash commands failed: {e}")
 
 bot = PasskeyBot()

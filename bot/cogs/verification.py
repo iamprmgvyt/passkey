@@ -852,7 +852,7 @@ class MultiStepSetupWizardView(discord.ui.View):
             overwrites = {
                 guild.default_role: discord.PermissionOverwrite(read_messages=True, send_messages=False),
                 verified_role: discord.PermissionOverwrite(read_messages=False),
-                guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True)
+                guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, view_channel=True)
             }
             try:
                 verify_channel = await guild.create_text_channel(
@@ -864,13 +864,26 @@ class MultiStepSetupWizardView(discord.ui.View):
             except Exception as e:
                 await interaction.followup.send(f"❌ Failed to create `#verify` channel: {e}")
                 return
+        else:
+            # Ensure bot has explicit permission to post in existing channel
+            try:
+                await verify_channel.set_permissions(
+                    guild.me,
+                    read_messages=True,
+                    send_messages=True,
+                    embed_links=True,
+                    view_channel=True,
+                    reason="[Passkey Setup] Ensure Bot Permissions"
+                )
+            except Exception:
+                pass
 
         # 3. Setup #passkey-logs channel
         log_channel = self.selected_log_chan or discord.utils.get(guild.text_channels, name="passkey-logs") or discord.utils.get(guild.text_channels, name="security-logs")
         if not log_channel and self.selected_log_chan is None:
             overwrites = {
                 guild.default_role: discord.PermissionOverwrite(read_messages=False),
-                guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True)
+                guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, view_channel=True)
             }
             try:
                 log_channel = await guild.create_text_channel(
@@ -911,7 +924,10 @@ class MultiStepSetupWizardView(discord.ui.View):
             embed.set_thumbnail(url=guild.icon.url)
 
         view = VerifyButtonView(self.bot, guild.id)
-        await verify_channel.send(embed=embed, view=view)
+        try:
+            await verify_channel.send(embed=embed, view=view)
+        except Exception as e:
+            log.warning(f"Could not send verify panel: {e}")
 
         # 6. Confirmation message
         summary_embed = discord.Embed(
@@ -1279,6 +1295,47 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
         view = discord.ui.View()
         view.add_item(discord.ui.Button(label="Open Verification Portal", url=verify_url, style=discord.ButtonStyle.link, emoji="🌐"))
         await ctx.send(embed=embed, view=view, ephemeral=True)
+
+    @commands.hybrid_command(name="post_verify", aliases=["post-verify", "sendverify", "postverify"])
+    @commands.has_permissions(administrator=True)
+    @commands.bot_has_permissions(send_messages=True, embed_links=True)
+    @app_commands.describe(channel="Target channel to send verification embed panel (default: current channel)")
+    async def post_verify(self, ctx: commands.Context, channel: discord.TextChannel = None):
+        """Send the interactive 'Click to Verify' panel into a channel."""
+        target_channel = channel or ctx.channel
+        guild = ctx.guild
+
+        config = {}
+        if self.bot.db:
+            config = await self.bot.db.get_guild_config(guild.id)
+
+        mode = config.get("verify_mode", "web")
+        lang = config.get("language", "en")
+
+        embed = discord.Embed(
+            title="🔑 Passkey Server Gatekeeper",
+            description=(
+                f"Welcome to **{guild.name}**!\n\n"
+                "To prevent automated raid bots and maintain community safety, "
+                "please click the **Click to Verify** button below to complete verification.\n\n"
+                f"• **Verification Method**: `{mode.upper()}`\n"
+                f"• **Language**: `{lang.upper()}`\n"
+                "• **Instant Access**: Unlocks full access to all member channels immediately."
+            ),
+            color=0x6366F1
+        )
+        embed.set_footer(text="Protected by Passkey Zero-Trust Gatekeeper")
+        if guild.icon:
+            embed.set_thumbnail(url=guild.icon.url)
+
+        view = VerifyButtonView(self.bot, guild.id)
+        try:
+            await target_channel.send(embed=embed, view=view)
+            if self.bot.db:
+                await self.bot.db.set_guild_config(guild.id, "verify_channel_id", str(target_channel.id))
+            await ctx.send(f"✅ **Verification panel successfully posted into** {target_channel.mention}!", ephemeral=True)
+        except Exception as e:
+            await ctx.send(f"❌ Failed to send embed to {target_channel.mention}: {e}", ephemeral=True)
 
 
 async def setup(bot):
