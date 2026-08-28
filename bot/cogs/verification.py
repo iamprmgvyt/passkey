@@ -321,16 +321,21 @@ class ImageCaptchaChallengeView(discord.ui.View):
 
 
 class EmojiSequenceView(discord.ui.View):
-    """Interactive Emoji Sequence Pattern Matching Challenge."""
-    def __init__(self, bot, guild: discord.Guild, target_sequence: List[str], all_emojis: List[str]):
+    """Interactive Emoji Sequence Pattern Matching Challenge with random reshuffling."""
+    def __init__(self, bot, guild: discord.Guild, target_sequence: List[str], all_emojis: List[str], lang: str = "en"):
         super().__init__(timeout=120)
         self.bot = bot
         self.guild = guild
         self.target_sequence = target_sequence
+        self.all_emojis = all_emojis
+        self.lang = lang
         self.entered_sequence: List[str] = []
+        self._build_buttons()
 
-        shuffled = random.sample(all_emojis, len(all_emojis))
-        for em_str in shuffled:
+    def _build_buttons(self):
+        self.clear_items()
+        shuffled = random.sample(self.all_emojis, len(self.all_emojis))
+        for i, em_str in enumerate(shuffled):
             parsed_emoji = None
             try:
                 if em_str and (em_str.startswith("<:") or em_str.startswith("<a:")):
@@ -338,36 +343,84 @@ class EmojiSequenceView(discord.ui.View):
             except Exception:
                 parsed_emoji = None
 
+            row_idx = 0 if i < 3 else 1
             if parsed_emoji:
-                btn = discord.ui.Button(emoji=parsed_emoji, style=discord.ButtonStyle.secondary)
+                btn = discord.ui.Button(emoji=parsed_emoji, style=discord.ButtonStyle.secondary, row=row_idx)
             else:
-                btn = discord.ui.Button(label=em_str, style=discord.ButtonStyle.secondary)
+                btn = discord.ui.Button(label=em_str, style=discord.ButtonStyle.secondary, row=row_idx)
 
             btn.callback = self._make_callback(em_str)
             self.add_item(btn)
+
+    def get_challenge_embed(self) -> discord.Embed:
+        lock_em = Emojis.get("lock", self.bot, self.guild)
+        is_vi = (self.lang == "vi")
+        seq_display = " ".join(self.target_sequence)
+        entered_display = " ".join(self.entered_sequence) if self.entered_sequence else ("*(Chờ lượt bấm đầu tiên...)*" if is_vi else "*(Waiting for first click...)*")
+        step_str = f"({len(self.entered_sequence)}/{len(self.target_sequence)})"
+
+        title = f"{lock_em} Passkey Thử Thách Mẫu Biểu Tượng" if is_vi else f"{lock_em} Passkey Emoji Pattern Challenge"
+        desc = (
+            f"Vui lòng bấm các nút biểu tượng bên dưới theo **đúng thứ tự sau**:\n\n"
+            f"# {seq_display}\n\n"
+            f"• **Tiến độ**: {entered_display} **{step_str}**\n"
+            f"• **Lưu ý**: Các nút bấm sẽ **tự động xáo trộn vị trí ngẫu nhiên** sau mỗi lượt bấm!"
+        ) if is_vi else (
+            f"Please click the buttons below in this **exact sequence**:\n\n"
+            f"# {seq_display}\n\n"
+            f"• **Progress**: {entered_display} **{step_str}**\n"
+            f"• **Note**: Button positions will **automatically reshuffle randomly** after each click!"
+        )
+
+        embed = discord.Embed(
+            title=title,
+            description=desc,
+            color=0x6366F1
+        )
+        embed.set_footer(text="Passkey Zero-Trust Defense • Auto-Shuffled Buttons")
+        return embed
 
     def _make_callback(self, emoji: str):
         async def callback(interaction: discord.Interaction):
             self.entered_sequence.append(emoji)
             idx = len(self.entered_sequence) - 1
+            is_vi = (self.lang == "vi")
 
             if self.entered_sequence[idx] != self.target_sequence[idx]:
                 self.stop()
                 penalty_msg = await handle_failed_attempt(self.bot, self.guild, interaction.user, "Incorrect emoji sequence")
-                await interaction.response.send_message(penalty_msg, ephemeral=True)
+                warn_em = Emojis.get("warn", self.bot, self.guild)
+                fail_embed = discord.Embed(
+                    title=f"{warn_em} Sai thứ tự biểu tượng!" if is_vi else f"{warn_em} Incorrect Pattern Sequence!",
+                    description=f"{penalty_msg}",
+                    color=0xEF4444
+                )
+                await interaction.response.edit_message(embed=fail_embed, view=None)
                 return
 
             if len(self.entered_sequence) == len(self.target_sequence):
                 self.stop()
                 VERIFY_FAILED_ATTEMPTS.pop((self.guild.id, interaction.user.id), None)
                 success, msg = await grant_verified_role(self.bot, self.guild, interaction.user, method="emoji_sequence")
+                verified_em = Emojis.get("verified", self.bot, self.guild)
                 if success:
-                    await interaction.response.send_message(f" **Pattern Matched!** Welcome to **{self.guild.name}**!", ephemeral=True)
+                    win_embed = discord.Embed(
+                        title=f"{verified_em} Xác thực thành công!" if is_vi else f"{verified_em} Pattern Matched & Verified!",
+                        description=f"Chào mừng bạn đến với **{self.guild.name}**!" if is_vi else f"Welcome to **{self.guild.name}**!",
+                        color=0x10B981
+                    )
+                    await interaction.response.edit_message(embed=win_embed, view=None)
                 else:
-                    await interaction.response.send_message(f" {msg}", ephemeral=True)
+                    err_embed = discord.Embed(
+                        title="Lỗi xác thực" if is_vi else "Verification Error",
+                        description=f"{msg}",
+                        color=0xEF4444
+                    )
+                    await interaction.response.edit_message(embed=err_embed, view=None)
             else:
-                progress = " ".join(self.entered_sequence)
-                await interaction.response.send_message(f" Pattern Progress: `{progress}` ({len(self.entered_sequence)}/{len(self.target_sequence)})", ephemeral=True)
+                # MATCHED STEP: Reshuffle buttons randomly and edit message in-place
+                self._build_buttons()
+                await interaction.response.edit_message(embed=self.get_challenge_embed(), view=self)
 
         return callback
 
@@ -490,18 +543,8 @@ class VerifyButtonView(discord.ui.View):
                 lock_em = Emojis.get("lock", self.bot, guild) or "L"
                 emojis_pool = [passkey_em, shield_em, otp_em, verified_em, warn_em, lock_em]
                 target_seq = random.sample(emojis_pool, 3)
-                seq_display = " ".join(target_seq)
-                embed = discord.Embed(
-                    title=f"{lock_em} Passkey Emoji Pattern Challenge",
-                    description=(
-                        f"Please click the buttons below in this **exact sequence**:\n\n"
-                        f"# {seq_display}\n\n"
-                        f"Click each emoji in order. One mistake will reset the attempt."
-                    ),
-                    color=0x6366F1
-                )
-                view = EmojiSequenceView(self.bot, guild, target_seq, emojis_pool)
-                await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+                view = EmojiSequenceView(self.bot, guild, target_seq, emojis_pool, lang=lang)
+                await interaction.followup.send(embed=view.get_challenge_embed(), view=view, ephemeral=True)
                 return
 
             # 4. Social Connection Check Mode
