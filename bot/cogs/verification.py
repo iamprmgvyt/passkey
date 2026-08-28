@@ -1358,6 +1358,46 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
         except Exception as e:
             await ctx.send(f"❌ Failed to send embed to {target_channel.mention}: {e}", ephemeral=True)
 
+    @commands.hybrid_command(name="reset_verifications", aliases=["wipe_verifications", "clear_verifications"])
+    @commands.has_permissions(administrator=True)
+    async def reset_verifications(self, ctx: commands.Context):
+        """Purge and reset all verification records from the database for this server."""
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+
+        guild_id = str(ctx.guild.id)
+        if self.bot.db:
+            if self.bot.db.use_turso:
+                try:
+                    await self.bot.db.turso_client.execute(
+                        "DELETE FROM verification_logs WHERE guild_id = ?",
+                        [guild_id]
+                    )
+                except Exception as e:
+                    log.warning(f"Error resetting Turso verifications: {e}")
+
+            if self.bot.db.sqlite_conn:
+                def _del():
+                    cur = self.bot.db.sqlite_conn.cursor()
+                    cur.execute("DELETE FROM verification_logs WHERE guild_id = ?", (guild_id,))
+                    self.bot.db.sqlite_conn.commit()
+                import asyncio
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(None, _del)
+
+        verified_emoji = Emojis.get("verified", self.bot, ctx.guild)
+        shield_emoji = Emojis.get("shield", self.bot, ctx.guild)
+
+        embed = discord.Embed(
+            title=f"{verified_emoji} Verification Data Purged",
+            description=f"{shield_emoji} All verification logs and IP/Email fingerprints for **{ctx.guild.name}** have been completely cleared from the database.",
+            color=0x10B981
+        )
+        if ctx.interaction:
+            await ctx.interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            await ctx.send(embed=embed)
+
 
 async def setup(bot):
     await bot.add_cog(Verification(bot))
