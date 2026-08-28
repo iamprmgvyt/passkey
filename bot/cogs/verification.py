@@ -330,9 +330,20 @@ class EmojiSequenceView(discord.ui.View):
         self.entered_sequence: List[str] = []
 
         shuffled = random.sample(all_emojis, len(all_emojis))
-        for emoji in shuffled:
-            btn = discord.ui.Button(label=emoji, style=discord.ButtonStyle.secondary, custom_id=f"seq_{emoji}")
-            btn.callback = self._make_callback(emoji)
+        for em_str in shuffled:
+            parsed_emoji = None
+            try:
+                if em_str and (em_str.startswith("<:") or em_str.startswith("<a:")):
+                    parsed_emoji = discord.PartialEmoji.from_str(em_str)
+            except Exception:
+                parsed_emoji = None
+
+            if parsed_emoji:
+                btn = discord.ui.Button(emoji=parsed_emoji, style=discord.ButtonStyle.secondary)
+            else:
+                btn = discord.ui.Button(label=em_str, style=discord.ButtonStyle.secondary)
+
+            btn.callback = self._make_callback(em_str)
             self.add_item(btn)
 
     def _make_callback(self, emoji: str):
