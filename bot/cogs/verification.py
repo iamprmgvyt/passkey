@@ -403,7 +403,7 @@ class VerifyButtonView(discord.ui.View):
                 if em:
                     self.verify_button.emoji = em
 
-    @discord.ui.button(label="Click to Verify", style=discord.ButtonStyle.success, emoji="", custom_id="passkey:btn_verify")
+    @discord.ui.button(label="Click to Verify", style=discord.ButtonStyle.success, custom_id="passkey:btn_verify")
     async def verify_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         guild = interaction.guild or self.bot.get_guild(self.guild_id)
         if not guild:
@@ -503,7 +503,7 @@ class VerifyButtonView(discord.ui.View):
             from utils.config import Config
             verify_url = f"{Config.DASHBOARD_URL.rstrip('/')}/verify?session={token}"
             view = discord.ui.View()
-            view.add_item(discord.ui.Button(label="Check Social Connections", url=verify_url, style=discord.ButtonStyle.link, emoji=""))
+            view.add_item(discord.ui.Button(label="Check Social Connections", url=verify_url, style=discord.ButtonStyle.link))
             await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             return
 
@@ -530,7 +530,6 @@ class VerifyButtonView(discord.ui.View):
                 f" *Session remains active for 10 minutes.*"
             )
             btn_label = "Verify with Biometrics / TouchID"
-            btn_emoji = ""
         elif is_email:
             title = " Passkey — Cổng Xác Thực Email" if lang == "vi" else " Passkey — Email Verification Portal"
             desc = (
@@ -539,7 +538,6 @@ class VerifyButtonView(discord.ui.View):
                 f"Hello **{interaction.user.display_name}**,\n\nClick the button below to complete **Email OTP Verification** for **{guild.name}**.\n\n **Note:** If you don't see the code in your inbox, check your **Spam folder**!"
             )
             btn_label = "Mở Cổng Xác Thực Email" if lang == "vi" else "Open Email Verification"
-            btn_emoji = ""
         else:
             title = " Passkey — Cổng Xác Thực Người Dùng" if lang == "vi" else " Passkey — Human Verification Portal"
             desc = (
@@ -548,7 +546,6 @@ class VerifyButtonView(discord.ui.View):
                 f"Hello **{interaction.user.display_name}**,\n\nPlease click the button below to complete Cloudflare Turnstile verification for **{guild.name}**.\n\n *You have up to 5 attempts.*"
             )
             btn_label = "Mở Cổng Xác Thực" if lang == "vi" else "Open Verification Portal"
-            btn_emoji = ""
 
         embed = discord.Embed(title=title, description=desc, color=0x6366F1)
         embed.set_footer(text="Passkey Gatekeeper • Zero-Trust Verification Network")
@@ -556,7 +553,7 @@ class VerifyButtonView(discord.ui.View):
             embed.set_thumbnail(url=guild.icon.url)
 
         web_view = discord.ui.View()
-        web_view.add_item(discord.ui.Button(label=btn_label, url=verify_url, style=discord.ButtonStyle.link, emoji=btn_emoji))
+        web_view.add_item(discord.ui.Button(label=btn_label, url=verify_url, style=discord.ButtonStyle.link))
         await interaction.response.send_message(embed=embed, view=web_view, ephemeral=True)
 
 
@@ -689,7 +686,7 @@ class MultiStepSetupWizardView(discord.ui.View):
             self.add_item(select)
 
         # Navigation row: < and > buttons
-        btn_prev = discord.ui.Button(label="Previous", style=discord.ButtonStyle.secondary, emoji="", row=2, disabled=(self.current_step == 1))
+        btn_prev = discord.ui.Button(label="Previous", style=discord.ButtonStyle.secondary, row=2, disabled=(self.current_step == 1))
         btn_prev.callback = self._on_prev
         self.add_item(btn_prev)
 
@@ -697,11 +694,11 @@ class MultiStepSetupWizardView(discord.ui.View):
         self.add_item(btn_indicator)
 
         if self.current_step < self.total_steps:
-            btn_next = discord.ui.Button(label="Next", style=discord.ButtonStyle.primary, emoji="", row=2)
+            btn_next = discord.ui.Button(label="Next", style=discord.ButtonStyle.primary, row=2)
             btn_next.callback = self._on_next
             self.add_item(btn_next)
         else:
-            btn_deploy = discord.ui.Button(label="Finish & Deploy Setup", style=discord.ButtonStyle.success, emoji="", row=2)
+            btn_deploy = discord.ui.Button(label="Finish & Deploy Setup", style=discord.ButtonStyle.success, row=2)
             btn_deploy.callback = self._on_deploy
             self.add_item(btn_deploy)
 
