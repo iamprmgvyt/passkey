@@ -2,7 +2,7 @@
 """
 Passkey Dashboard — /verify Multi-Gateway Web Verification Portal.
 Supports:
-- 🌐 Cloudflare Turnstile CAPTCHA Gateway
+- 🌐 Cloudflare Turnstile CAPTCHA Gateway (Auto-enables submit button only upon challenge completion)
 - 📱 Native WebAuthn Biometric Passkey Gateway (Touch ID / Face ID / Windows Hello / YubiKey)
 - ✉️ Email OTP Gateway (Zoho SMTP 6-digit code)
 - 🔗 Social Connections Link Gateway
@@ -38,6 +38,9 @@ async def verify_cf_turnstile(cf_token: str, remote_ip: str = "") -> bool:
     if secret == "1x0000000000000000000000000000000AA" and cf_token:
         return True
 
+    if not cf_token:
+        return False
+
     url = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
     payload = {"secret": secret, "response": cf_token}
     if remote_ip:
@@ -47,10 +50,11 @@ async def verify_cf_turnstile(cf_token: str, remote_ip: str = "") -> bool:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, data=payload, timeout=aiohttp.ClientTimeout(total=8)) as resp:
                 res = await resp.json()
+                log.info(f"Cloudflare Turnstile siteverify response: {res}")
                 return bool(res.get("success", False))
     except Exception as e:
         log.error(f"CF Turnstile verification error: {e}")
-        return True
+        return False
 
 @router.get("/verify", response_class=HTMLResponse)
 async def verify_page(request: Request, session: str = ""):
@@ -113,11 +117,16 @@ async def verify_page(request: Request, session: str = ""):
     .btn-verify {{
       width: 100%; background: var(--gradient-btn);
       color: #fff; font-size: 1rem; font-weight: 800; padding: 14px 20px; border-radius: 12px;
-      border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+      border: none; cursor: pointer; transition: all 0.25s; box-shadow: 0 4px 20px rgba(99,102,241,0.4);
       display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     }}
-    .btn-verify:hover {{ transform: translateY(-2px); box-shadow: 0 6px 25px rgba(99,102,241,0.6); }}
-    .btn-verify:disabled {{ opacity: 0.6; cursor: not-allowed; transform: none; }}
+    .btn-verify:hover:not(:disabled) {{ transform: translateY(-2px); box-shadow: 0 6px 25px rgba(99,102,241,0.6); }}
+    .btn-verify:disabled {{
+      opacity: 0.45 !important;
+      cursor: not-allowed !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }}
     .status-msg {{
       margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 0.84rem; display: none;
     }}
@@ -163,9 +172,15 @@ async def verify_page(request: Request, session: str = ""):
       {'Chào mừng' if is_vi else 'Welcome'} <strong>{user_name}</strong>! {'Hoàn tất xác thực an toàn để tham gia máy chủ.' if is_vi else 'Complete secure verification to gain access to the server.'}
     </p>
 
-    <!-- Cloudflare Turnstile Widget (for standard web and email) -->
+    <!-- Cloudflare Turnstile Widget (with callbacks) -->
     <div class="turnstile-wrapper" style="{'display:none;' if is_biometric_mode else 'display:flex;'}">
-      <div class="cf-turnstile" data-sitekey="{Config.CF_TURNSTILE_SITEKEY}" data-theme="dark" data-callback="onTurnstileSuccess"></div>
+      <div class="cf-turnstile" 
+           data-sitekey="{Config.CF_TURNSTILE_SITEKEY}" 
+           data-theme="dark" 
+           data-callback="onTurnstileSuccess"
+           data-expired-callback="onTurnstileExpired"
+           data-error-callback="onTurnstileError">
+      </div>
     </div>
 
     <!-- 1. Biometric Passkey WebAuthn Mode -->
@@ -193,9 +208,9 @@ async def verify_page(request: Request, session: str = ""):
           {'Nhập email của bạn để nhận mã xác minh OTP 6 số:' if is_vi else 'Enter your email to receive a 6-digit OTP code:'}
         </p>
         <input type="email" id="inp-email" class="email-input" placeholder="your-email@domain.com">
-        <button type="button" class="btn-verify" id="btn-send-otp" onclick="sendEmailOtp('{token}')">
+        <button type="button" class="btn-verify" id="btn-send-otp" onclick="sendEmailOtp('{token}')" disabled style="opacity:0.45;cursor:not-allowed;">
           <img src="/static/emojis/otp.png" class="emoji-icon" alt="">
-          <span>{'Gửi Mã Xác Nhận ✉️' if is_vi else 'Send Verification Code ✉️'}</span>
+          <span id="btn-send-otp-text">{'⏳ Hoàn thành CAPTCHA để gửi mã' if is_vi else '⏳ Complete CAPTCHA to Send OTP'}</span>
         </button>
       </div>
 
@@ -234,17 +249,17 @@ async def verify_page(request: Request, session: str = ""):
         <div class="social-badge">🎵 Spotify</div>
         <div class="social-badge">👾 Twitch</div>
       </div>
-      <button type="button" class="btn-verify" id="btn-social" onclick="submitStandardVerification('{token}')">
+      <button type="button" class="btn-verify" id="btn-social" onclick="submitStandardVerification('{token}')" disabled style="opacity:0.45;cursor:not-allowed;">
         <img src="/static/emojis/social.png" class="emoji-icon" alt="">
-        <span>{'Kiểm Tra Liên Kết & Xác Thực' if is_vi else 'Verify Connected Accounts'}</span>
+        <span id="btn-social-text">{'⏳ Hoàn thành CAPTCHA để xác thực' if is_vi else '⏳ Complete CAPTCHA to verify'}</span>
       </button>
     </div>
 
-    <!-- 4. Standard Web Turnstile Mode -->
+    <!-- 4. Standard Web Turnstile Mode (Starts DISABLED until Turnstile completes) -->
     <div id="standard-mode-box" style="{'display:block;' if (not is_email_mode and not is_biometric_mode and not is_social_mode) else 'display:none;'}">
-      <button type="button" class="btn-verify" id="btn-submit" onclick="submitStandardVerification('{token}')">
+      <button type="button" class="btn-verify" id="btn-submit" onclick="submitStandardVerification('{token}')" disabled style="opacity:0.45;cursor:not-allowed;">
         <img src="/static/emojis/verified.png" class="emoji-icon" alt="">
-        <span>{'Tôi là con người — Xác thực 🔑' if is_vi else 'I am Human — Verify 🔑'}</span>
+        <span id="btn-submit-text">{'⏳ Đang đợi xác thực Cloudflare...' if is_vi else '⏳ Waiting for Cloudflare Challenge...'}</span>
       </button>
       <div class="attempt-notice">
         <img src="/static/emojis/warn.png" class="emoji-icon" alt="">
@@ -261,9 +276,81 @@ async def verify_page(request: Request, session: str = ""):
 
   <script>
     let cfTurnstileToken = '';
+    const isVi = {'true' if is_vi else 'false'};
 
     function onTurnstileSuccess(token) {{
       cfTurnstileToken = token;
+      
+      // 1. Enable standard submit button
+      const btn = document.getElementById('btn-submit');
+      if (btn) {{
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        const txt = document.getElementById('btn-submit-text');
+        if (txt) txt.innerHTML = isVi ? 'Tôi là con người — Hoàn tất xác thực 🔑' : 'I am Human — Complete Verification 🔑';
+      }}
+
+      // 2. Enable email send OTP button
+      const btnEmail = document.getElementById('btn-send-otp');
+      if (btnEmail) {{
+        btnEmail.disabled = false;
+        btnEmail.style.opacity = '1';
+        btnEmail.style.cursor = 'pointer';
+        const txtEmail = document.getElementById('btn-send-otp-text');
+        if (txtEmail) txtEmail.innerHTML = isVi ? 'Gửi Mã Xác Nhận ✉️' : 'Send Verification Code ✉️';
+      }}
+
+      // 3. Enable social verify button
+      const btnSocial = document.getElementById('btn-social');
+      if (btnSocial) {{
+        btnSocial.disabled = false;
+        btnSocial.style.opacity = '1';
+        btnSocial.style.cursor = 'pointer';
+        const txtSocial = document.getElementById('btn-social-text');
+        if (txtSocial) txtSocial.innerHTML = isVi ? 'Kiểm Tra Liên Kết &amp; Xác Thực' : 'Verify Connected Accounts';
+      }}
+
+      // Optional: hide any previous error messages
+      const box = document.getElementById('status-box');
+      if (box) box.style.display = 'none';
+    }}
+
+    function onTurnstileExpired() {{
+      cfTurnstileToken = '';
+      disableSubmitButtons();
+    }}
+
+    function onTurnstileError() {{
+      cfTurnstileToken = '';
+      disableSubmitButtons();
+    }}
+
+    function disableSubmitButtons() {{
+      const btn = document.getElementById('btn-submit');
+      if (btn) {{
+        btn.disabled = true;
+        btn.style.opacity = '0.45';
+        btn.style.cursor = 'not-allowed';
+        const txt = document.getElementById('btn-submit-text');
+        if (txt) txt.innerHTML = isVi ? '⏳ Đang đợi xác thực Cloudflare...' : '⏳ Waiting for Cloudflare Challenge...';
+      }}
+      const btnEmail = document.getElementById('btn-send-otp');
+      if (btnEmail) {{
+        btnEmail.disabled = true;
+        btnEmail.style.opacity = '0.45';
+        btnEmail.style.cursor = 'not-allowed';
+        const txtEmail = document.getElementById('btn-send-otp-text');
+        if (txtEmail) txtEmail.innerHTML = isVi ? '⏳ Hoàn thành CAPTCHA để gửi mã' : '⏳ Complete CAPTCHA to Send OTP';
+      }}
+      const btnSocial = document.getElementById('btn-social');
+      if (btnSocial) {{
+        btnSocial.disabled = true;
+        btnSocial.style.opacity = '0.45';
+        btnSocial.style.cursor = 'not-allowed';
+        const txtSocial = document.getElementById('btn-social-text');
+        if (txtSocial) txtSocial.innerHTML = isVi ? '⏳ Hoàn thành CAPTCHA để xác thực' : '⏳ Complete CAPTCHA to verify';
+      }}
     }}
 
     function showMsg(msg, isSuccess = false) {{
@@ -275,10 +362,14 @@ async def verify_page(request: Request, session: str = ""):
     }}
 
     async function submitStandardVerification(token) {{
+      if (!cfTurnstileToken) {{
+        return showMsg(isVi ? '⚠️ Vui lòng hoàn thành xác thực Cloudflare ở trên trước khi bấm.' : '⚠️ Please complete the Cloudflare challenge above first.');
+      }}
+
       const btn = document.getElementById('btn-submit');
       if (!token) return showMsg('❌ Invalid session token. Please click verify again on Discord.');
       btn.disabled = true;
-      btn.textContent = 'Verifying...';
+      btn.textContent = isVi ? 'Đang xác minh...' : 'Verifying...';
 
       try {{
         const res = await fetch('/api/verify/complete', {{
@@ -288,17 +379,17 @@ async def verify_page(request: Request, session: str = ""):
         }});
         const data = await res.json();
         if (data.ok) {{
-          showMsg('✅ <strong>Verified!</strong> You may return to Discord.', true);
+          showMsg(isVi ? '✅ <strong>Đã xác thực thành công!</strong> Bạn có thể quay lại Discord.' : '✅ <strong>Verified!</strong> You may return to Discord.', true);
           btn.style.display = 'none';
         }} else {{
           showMsg('❌ ' + (data.detail || 'Verification failed.'));
           btn.disabled = false;
-          btn.textContent = 'Retry Verification';
+          btn.textContent = isVi ? 'Thử lại xác thực' : 'Retry Verification';
         }}
       }} catch (e) {{
-        showMsg('❌ Connection error.');
+        showMsg(isVi ? '❌ Lỗi kết nối máy chủ.' : '❌ Connection error.');
         btn.disabled = false;
-        btn.textContent = 'Retry Verification';
+        btn.textContent = isVi ? 'Thử lại xác thực' : 'Retry Verification';
       }}
     }}
 
@@ -306,7 +397,7 @@ async def verify_page(request: Request, session: str = ""):
       const btn = document.getElementById('btn-biometric');
       if (!token) return showMsg('❌ Invalid session token.');
       btn.disabled = true;
-      btn.textContent = 'Scanning Biometrics...';
+      btn.textContent = isVi ? 'Đang quét sinh trắc học...' : 'Scanning Biometrics...';
 
       if (window.PublicKeyCredential) {{
         try {{
@@ -341,28 +432,32 @@ async def verify_page(request: Request, session: str = ""):
         }});
         const data = await res.json();
         if (data.ok) {{
-          showMsg('🎉 <strong>Biometric Passkey Verified!</strong> You may return to Discord.', true);
+          showMsg(isVi ? '🎉 <strong>Xác thực Sinh trắc học thành công!</strong> Bạn có thể quay lại Discord.' : '🎉 <strong>Biometric Passkey Verified!</strong> You may return to Discord.', true);
           btn.style.display = 'none';
         }} else {{
           showMsg('❌ ' + (data.detail || 'Biometric verification failed.'));
           btn.disabled = false;
-          btn.textContent = 'Retry Biometrics';
+          btn.textContent = isVi ? 'Thử lại Sinh trắc học' : 'Retry Biometrics';
         }}
       }} catch (e) {{
-        showMsg('❌ Connection error.');
+        showMsg(isVi ? '❌ Lỗi kết nối máy chủ.' : '❌ Connection error.');
         btn.disabled = false;
-        btn.textContent = 'Retry Biometrics';
+        btn.textContent = isVi ? 'Thử lại Sinh trắc học' : 'Retry Biometrics';
       }}
     }}
 
     async function sendEmailOtp(token) {{
+      if (!cfTurnstileToken) {{
+        return showMsg(isVi ? '⚠️ Vui lòng hoàn thành xác thực Cloudflare ở trên trước khi gửi mã.' : '⚠️ Please complete the Cloudflare challenge above first.');
+      }}
+
       const email = document.getElementById('inp-email').value.trim();
       const btn = document.getElementById('btn-send-otp');
-      if (!email || !email.includes('@')) return showMsg('❌ Please enter a valid email address.');
-      if (!token) return showMsg('❌ Invalid session token. Please request verification on Discord.');
+      if (!email || !email.includes('@')) return showMsg(isVi ? '❌ Vui lòng nhập địa chỉ email hợp lệ.' : '❌ Please enter a valid email address.');
+      if (!token) return showMsg(isVi ? '❌ Phiên xác thực không hợp lệ.' : '❌ Invalid session token.');
 
       btn.disabled = true;
-      btn.textContent = 'Sending OTP...';
+      btn.textContent = isVi ? 'Đang gửi mã OTP...' : 'Sending OTP...';
 
       try {{
         const res = await fetch('/api/verify/email/send-otp', {{
@@ -372,28 +467,28 @@ async def verify_page(request: Request, session: str = ""):
         }});
         const data = await res.json();
         if (data.ok) {{
-          showMsg('📩 <strong>Verification code sent!</strong> Check your email inbox or spam folder.', true);
+          showMsg(isVi ? '📩 <strong>Đã gửi mã xác nhận!</strong> Vui lòng kiểm tra hộp thư hoặc mục Spam.' : '📩 <strong>Verification code sent!</strong> Check your email inbox or spam folder.', true);
           document.getElementById('step-email').style.display = 'none';
           document.getElementById('step-otp').style.display = 'block';
         }} else {{
           showMsg('❌ ' + (data.detail || 'Failed to send OTP code.'));
           btn.disabled = false;
-          btn.textContent = 'Send Verification Code ✉️';
+          btn.textContent = isVi ? 'Gửi Mã Xác Nhận ✉️' : 'Send Verification Code ✉️';
         }}
       }} catch (e) {{
-        showMsg('❌ Failed to connect to server.');
+        showMsg(isVi ? '❌ Không thể kết nối tới máy chủ.' : '❌ Failed to connect to server.');
         btn.disabled = false;
-        btn.textContent = 'Send Verification Code ✉️';
+        btn.textContent = isVi ? 'Gửi Mã Xác Nhận ✉️' : 'Send Verification Code ✉️';
       }}
     }}
 
     async function submitEmailOtp(token) {{
       const otp = document.getElementById('inp-otp').value.trim();
       const btn = document.getElementById('btn-verify-otp');
-      if (!otp || otp.length < 4) return showMsg('❌ Please enter the complete 6-digit code.');
+      if (!otp || otp.length < 4) return showMsg(isVi ? '❌ Vui lòng nhập đủ mã 6 số.' : '❌ Please enter the complete 6-digit code.');
 
       btn.disabled = true;
-      btn.textContent = 'Verifying Code...';
+      btn.textContent = isVi ? 'Đang kiểm tra mã...' : 'Verifying Code...';
 
       try {{
         const res = await fetch('/api/verify/email/verify-otp', {{
@@ -403,17 +498,17 @@ async def verify_page(request: Request, session: str = ""):
         }});
         const data = await res.json();
         if (data.ok) {{
-          showMsg('🎉 <strong>Email Verified Successfully!</strong> You may now return to Discord.', true);
+          showMsg(isVi ? '🎉 <strong>Xác thực Email thành công!</strong> Bạn có thể quay lại Discord.' : '🎉 <strong>Email Verified Successfully!</strong> You may now return to Discord.', true);
           document.getElementById('step-otp').style.display = 'none';
         }} else {{
-          showMsg(data.detail || '❌ Incorrect or expired code.');
+          showMsg(data.detail || (isVi ? '❌ Mã xác nhận không đúng hoặc đã hết hạn.' : '❌ Incorrect or expired code.'));
           btn.disabled = false;
-          btn.textContent = 'Verify OTP Code';
+          btn.textContent = isVi ? 'Xác Nhận Mã OTP' : 'Verify OTP Code';
         }}
       }} catch (e) {{
-        showMsg('❌ Connection error.');
+        showMsg(isVi ? '❌ Lỗi kết nối máy chủ.' : '❌ Connection error.');
         btn.disabled = false;
-        btn.textContent = 'Verify OTP Code';
+        btn.textContent = isVi ? 'Xác Nhận Mã OTP' : 'Verify OTP Code';
       }}
     }}
 
@@ -422,7 +517,7 @@ async def verify_page(request: Request, session: str = ""):
       document.getElementById('step-email').style.display = 'block';
       const btn = document.getElementById('btn-send-otp');
       btn.disabled = false;
-      btn.textContent = 'Send Verification Code ✉️';
+      btn.textContent = isVi ? 'Gửi Mã Xác Nhận ✉️' : 'Send Verification Code ✉️';
     }}
   </script>
 </body>
