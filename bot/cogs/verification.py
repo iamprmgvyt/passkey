@@ -1199,7 +1199,7 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
         wizard_view = MultiStepSetupWizardView(self.bot, ctx.guild, ctx.author)
         await ctx.send(embed=wizard_view.get_step_embed(), view=wizard_view)
 
-    @commands.hybrid_command(name="edit_setup", aliases=["editsetup", "reconfigure", "reconfig"])
+    @commands.hybrid_command(name="edit", aliases=["edit_setup", "editsetup", "reconfigure", "reconfig"])
     @commands.has_permissions(administrator=True)
     @commands.bot_has_permissions(manage_roles=True, manage_channels=True)
     async def edit_setup_command(self, ctx: commands.Context):

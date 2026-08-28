@@ -178,7 +178,7 @@ class General(commands.Cog, name="General & Utilities"):
 
         embed = discord.Embed(
             title=f"{passkey_emoji} Passkey Gatekeeper — Commands Manual",
-            description="Next-Generation Zero-Trust Discord Server Defense System.\nBoth Slash (`/`) and Prefix (`.`) commands are supported.",
+            description="Next-Generation Zero-Trust Discord Server Defense System.\nBoth Slash (`/`) and Prefix (`p!`, `P!`) commands are supported.",
             color=0x6366F1
         )
 
@@ -186,6 +186,7 @@ class General(commands.Cog, name="General & Utilities"):
             name=f"{passkey_emoji} Verification Setup",
             value=(
                 "• `/setup` — Launch 5-Step Paginated Setup Wizard.\n"
+                "• `/edit` — Edit/reconfigure existing server settings in wizard.\n"
                 "• `/post_verify` — Send interactive 'Click to Verify' panel into channel.\n"
                 "• `/settings` — Open Master Server Configuration Panel.\n"
                 "• `/setmode <mode>` — Switch between 9 verification engines.\n"
