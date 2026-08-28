@@ -426,18 +426,18 @@ class VerifyButtonView(discord.ui.View):
             if self.bot.db:
                 config = await self.bot.db.get_guild_config(guild.id)
 
+            mode = config.get("verify_mode", "web").lower()
+            lang = config.get("language", "en")
+            is_vi = (lang == "vi")
+
             verified_role_id = config.get("verified_role_id")
             verified_role = guild.get_role(int(verified_role_id)) if verified_role_id else discord.utils.get(guild.roles, name="Verified")
 
             if verified_role and verified_role in interaction.user.roles:
                 verified_emoji = Emojis.get("verified", self.bot, guild)
-                is_vi = (lang == "vi")
                 msg = f"{verified_emoji} Bạn đã được xác thực trong máy chủ này rồi!" if is_vi else f"{verified_emoji} You are already verified in this server!"
                 await interaction.response.send_message(msg, ephemeral=True)
                 return
-
-            mode = config.get("verify_mode", "web").lower()
-            lang = config.get("language", "en")
 
             # Handle Modal Modes immediately
             if mode == "captcha":
