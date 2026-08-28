@@ -76,19 +76,19 @@ class Moderation(commands.Cog, name="Moderation"):
     async def timeout(self, ctx: commands.Context, member: discord.Member, duration: str = "10m", *, reason: str = "No reason provided"):
         """Timeout a member to temporarily restrict them from speaking or reacting."""
         if member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
-            embed = discord.Embed(title="❌ Permission Denied", description="You cannot timeout someone with an equal or higher role than you.", color=0xEF4444)
+            embed = discord.Embed(title=" Permission Denied", description="You cannot timeout someone with an equal or higher role than you.", color=0xEF4444)
             await ctx.send(embed=embed, ephemeral=True)
             return
 
         try:
             delta = parse_duration(duration)
         except ValueError as e:
-            embed = discord.Embed(title="❌ Invalid Duration", description=str(e), color=0xEF4444)
+            embed = discord.Embed(title=" Invalid Duration", description=str(e), color=0xEF4444)
             await ctx.send(embed=embed, ephemeral=True)
             return
 
         if delta > datetime.timedelta(days=28):
-            embed = discord.Embed(title="❌ Duration Too Long", description="Maximum timeout duration is 28 days.", color=0xEF4444)
+            embed = discord.Embed(title=" Duration Too Long", description="Maximum timeout duration is 28 days.", color=0xEF4444)
             await ctx.send(embed=embed, ephemeral=True)
             return
 
@@ -109,7 +109,7 @@ class Moderation(commands.Cog, name="Moderation"):
                 member.display_avatar.url
             )
         except Exception as e:
-            embed = discord.Embed(title="❌ Action Failed", description=f"Failed to timeout member: {e}", color=0xEF4444)
+            embed = discord.Embed(title=" Action Failed", description=f"Failed to timeout member: {e}", color=0xEF4444)
             await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="untimeout", aliases=["unmute"])
@@ -134,7 +134,7 @@ class Moderation(commands.Cog, name="Moderation"):
                 0x10B981
             )
         except Exception as e:
-            embed = discord.Embed(title="❌ Action Failed", description=f"Failed to lift timeout: {e}", color=0xEF4444)
+            embed = discord.Embed(title=" Action Failed", description=f"Failed to lift timeout: {e}", color=0xEF4444)
             await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="kick")
@@ -144,7 +144,7 @@ class Moderation(commands.Cog, name="Moderation"):
     async def kick(self, ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
         """Kick a member from the server."""
         if member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
-            embed = discord.Embed(title="❌ Permission Denied", description="You cannot kick someone with an equal or higher role than you.", color=0xEF4444)
+            embed = discord.Embed(title=" Permission Denied", description="You cannot kick someone with an equal or higher role than you.", color=0xEF4444)
             await ctx.send(embed=embed, ephemeral=True)
             return
 
@@ -164,7 +164,7 @@ class Moderation(commands.Cog, name="Moderation"):
                 0xF97316
             )
         except Exception as e:
-            embed = discord.Embed(title="❌ Action Failed", description=f"Failed to kick member: {e}", color=0xEF4444)
+            embed = discord.Embed(title=" Action Failed", description=f"Failed to kick member: {e}", color=0xEF4444)
             await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="ban")
@@ -175,7 +175,7 @@ class Moderation(commands.Cog, name="Moderation"):
         """Permanently ban a user from the server."""
         member = ctx.guild.get_member(user.id)
         if member and member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
-            embed = discord.Embed(title="❌ Permission Denied", description="You cannot ban someone with an equal or higher role than you.", color=0xEF4444)
+            embed = discord.Embed(title=" Permission Denied", description="You cannot ban someone with an equal or higher role than you.", color=0xEF4444)
             await ctx.send(embed=embed, ephemeral=True)
             return
 
@@ -195,7 +195,7 @@ class Moderation(commands.Cog, name="Moderation"):
                 0xEF4444
             )
         except Exception as e:
-            embed = discord.Embed(title="❌ Action Failed", description=f"Failed to ban member: {e}", color=0xEF4444)
+            embed = discord.Embed(title=" Action Failed", description=f"Failed to ban member: {e}", color=0xEF4444)
             await ctx.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="warn")
@@ -204,7 +204,7 @@ class Moderation(commands.Cog, name="Moderation"):
     async def warn(self, ctx: commands.Context, member: discord.Member, *, reason: str = "Rule violation"):
         """Issue a formal recorded warning strike to a member."""
         if member.bot:
-            embed = discord.Embed(title="❌ Error", description="You cannot warn bot accounts.", color=0xEF4444)
+            embed = discord.Embed(title=" Error", description="You cannot warn bot accounts.", color=0xEF4444)
             await ctx.send(embed=embed, ephemeral=True)
             return
 
@@ -240,8 +240,8 @@ class Moderation(commands.Cog, name="Moderation"):
         warn_emoji = Emojis.get("warn", self.bot)
         if not warns:
             embed = discord.Embed(
-                title=f"📋 Infraction Record — {member.display_name}",
-                description="✅ Clean record! This member has 0 active warnings.",
+                title=f" Infraction Record — {member.display_name}",
+                description=" Clean record! This member has 0 active warnings.",
                 color=0x10B981
             )
             await ctx.send(embed=embed)

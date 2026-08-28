@@ -37,7 +37,7 @@ async def manage_page(request: Request):
         invite_url = f"https://discord.com/oauth2/authorize?client_id={Config.DISCORD_CLIENT_ID}&permissions=1395293285622&integration_type=0&scope=bot+applications.commands"
         guild_rows = f"""
         <div class="glass-card" style="text-align:center;padding:50px 20px;">
-          <div style="font-size:3rem;margin-bottom:12px;">🛡️</div>
+          <div style="font-size:3rem;margin-bottom:12px;"></div>
           <h2 style="font-size:1.4rem;font-weight:800;margin:0 0 8px;">No Discord Servers Connected Yet</h2>
           <p style="color:var(--text-muted);font-size:0.95rem;max-width:500px;margin:0 auto 24px;">
             Invite Passkey Bot to your server to activate Zero-Trust verification and defense shields.

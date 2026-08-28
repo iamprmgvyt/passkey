@@ -14,10 +14,10 @@ class System(commands.Cog, name="System"):
         if ext == "dashboard":
             from dashboard.app import reload_dashboard
             res = reload_dashboard()
-            await ctx.send(f"🎨 Dashboard reloaded ({res.get('reloaded_count', 0)} pages refreshed).")
+            await ctx.send(f" Dashboard reloaded ({res.get('reloaded_count', 0)} pages refreshed).")
         else:
             await self.bot.reload_extension(f"bot.cogs.{ext}")
-            await ctx.send(f"🔄 Reloaded `bot.cogs.{ext}`")
+            await ctx.send(f" Reloaded `bot.cogs.{ext}`")
 
 async def setup(bot):
     await bot.add_cog(System(bot))

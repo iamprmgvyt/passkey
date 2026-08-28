@@ -56,14 +56,14 @@ async def domain_page(request: Request):
     </div>
 
     <div class="glass-card scan-card">
-      <h2 style="font-size:1.35rem;font-weight:800;margin:0 0 8px;color:#818cf8;">🔍 URL Security Inspection</h2>
+      <h2 style="font-size:1.35rem;font-weight:800;margin:0 0 8px;color:#818cf8;"> URL Security Inspection</h2>
       <p style="color:var(--text-muted);font-size:0.9rem;margin:0;">
         Enter any domain or link to analyze against our global phishing &amp; threat intelligence cluster:
       </p>
 
       <div class="scan-input-group">
         <input type="text" id="target-url" class="scan-input" placeholder="https://discord-nitro-free-gift.xyz/claim">
-        <button class="btn-scan" onclick="runScan()">⚡ Scan Threat Now</button>
+        <button class="btn-scan" onclick="runScan()"> Scan Threat Now</button>
       </div>
 
       <div id="scan-result" class="result-box"></div>
@@ -76,7 +76,7 @@ async def domain_page(request: Request):
       const resBox = document.getElementById('scan-result');
       if (!url) return;
       resBox.style.display = 'block';
-      resBox.innerHTML = '<span style="color:#38bdf8;">🔄 Dispatching isolated sandbox container to inspect threat payload...</span>';
+      resBox.innerHTML = '<span style="color:#38bdf8;"> Dispatching isolated sandbox container to inspect threat payload...</span>';
       try {{
         const res = await fetch('/api/scan?url=' + encodeURIComponent(url));
         const d = await res.json();
@@ -87,7 +87,7 @@ async def domain_page(request: Request):
           '<div><strong>Cluster Node:</strong> ' + d.node_name + ' (' + d.latency + ')</div>' +
           '<div><strong>DOM Inspection:</strong> ' + d.dom_inspection + '</div>';
       }} catch (e) {{
-        resBox.innerHTML = '<span style="color:#f43f5e;">❌ Failed to connect to sandbox cluster.</span>';
+        resBox.innerHTML = '<span style="color:#f43f5e;"> Failed to connect to sandbox cluster.</span>';
       }}
     }}
   </script>

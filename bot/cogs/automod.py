@@ -187,11 +187,11 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
         if self.bot.db:
             config = await self.bot.db.get_guild_config(guild.id)
 
-        spam = "🟢 Enabled" if config.get("automod_spam", 1) else "🔴 Disabled"
-        invites = "🟢 Enabled" if config.get("automod_invites", 1) else "🔴 Disabled"
-        phishing = "🟢 Enabled" if config.get("automod_phishing", 1) else "🔴 Disabled"
-        mentions = "🟢 Enabled" if config.get("automod_mentions", 1) else "🔴 Disabled"
-        antialt = "🟢 Enabled" if config.get("antialt_enabled", 1) else "🔴 Disabled"
+        spam = " Enabled" if config.get("automod_spam", 1) else " Disabled"
+        invites = " Enabled" if config.get("automod_invites", 1) else " Disabled"
+        phishing = " Enabled" if config.get("automod_phishing", 1) else " Disabled"
+        mentions = " Enabled" if config.get("automod_mentions", 1) else " Disabled"
+        antialt = " Enabled" if config.get("antialt_enabled", 1) else " Disabled"
         min_age = f"**{config.get('min_age_days', 0)} days**"
 
         shield_emoji = Emojis.get("shield", self.bot)
@@ -241,7 +241,7 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
         }
         if feature not in key_map:
             embed = discord.Embed(
-                title="❌ Invalid Feature",
+                title=" Invalid Feature",
                 description="Valid features to toggle: `spam`, `invites`, `phishing`, `mentions`",
                 color=0xEF4444
             )
@@ -254,7 +254,7 @@ class AutoMod(commands.Cog, name="Auto-Moderation"):
         if self.bot.db:
             await self.bot.db.set_guild_config(ctx.guild.id, db_key, is_on)
 
-        state_str = "ENABLED 🟢" if is_on else "DISABLED 🔴"
+        state_str = "ENABLED " if is_on else "DISABLED "
         shield_emoji = Emojis.get("shield", self.bot)
         embed = discord.Embed(
             title=f"{shield_emoji} Shield Updated — {feature.upper()}",

@@ -23,7 +23,7 @@ class AntiAlt(commands.Cog, name="Anti-Alt Shield"):
         """Toggle anti-alt account detection (.antialt on/off or /antialt)."""
         mode = mode.lower()
         if mode not in ["on", "off", "enable", "disable"]:
-            await ctx.send("ℹ️ Usage: `.antialt on` or `.antialt off`", ephemeral=True)
+            await ctx.send("ℹ Usage: `.antialt on` or `.antialt off`", ephemeral=True)
             return
 
         enabled = 1 if mode in ["on", "enable"] else 0
@@ -32,7 +32,7 @@ class AntiAlt(commands.Cog, name="Anti-Alt Shield"):
 
         alt_emoji = Emojis.get("alt", self.bot)
         shield_emoji = Emojis.get("shield", self.bot)
-        status_str = "ENABLED 🟢" if enabled else "DISABLED 🔴"
+        status_str = "ENABLED " if enabled else "DISABLED "
         color = 0x10B981 if enabled else 0xEF4444
 
         embed = discord.Embed(

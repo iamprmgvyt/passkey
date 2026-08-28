@@ -38,13 +38,12 @@ async def run_render_keepalive():
     
     while True:
         try:
-            await asyncio.sleep(600)  # Ping every 10 minutes (Render sleeps at 15 mins)
             async with aiohttp.ClientSession() as session:
                 async with session.get(health_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status == 200:
-                        log.debug("Render keep-alive ping successful (200 OK).")
+                    log.info(f"[KeepAlive] Health ping {health_url} -> Status {resp.status}")
         except Exception as e:
-            log.debug(f"Keepalive ping notice: {e}")
+            log.warning(f"[KeepAlive] Ping failed: {e}")
+        await asyncio.sleep(600)  # Ping every 10 minutes
 
 async def main():
     await asyncio.gather(
@@ -57,4 +56,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
-        log.info("Passkey Services gracefully shut down.")
+        log.info("Passkey services shut down gracefully.")

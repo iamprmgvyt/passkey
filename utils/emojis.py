@@ -52,27 +52,27 @@ class Emojis:
 
     # Fallback Unicode Emojis (used only if guild emoji slots are completely full)
     FALLBACKS = {
-        "passkey": "🔑",
-        "shield": "🛡️",
-        "otp": "✉️",
-        "alt": "👥",
-        "verified": "✅",
-        "warn": "⚠️",
-        "ban": "🔨",
-        "lock": "🔒",
-        "unlock": "🔓",
-        "biometric": "📱",
-        "image_captcha": "🖼️",
-        "pattern": "🎮",
-        "social": "🔗",
-        "rules": "📜",
-        "turnstile": "🌐",
-        "dot_green": "🟢",
-        "dot_red": "🔴",
-        "prev": "◀️",
-        "next": "▶️",
-        "deploy": "🚀",
-        "wizard": "✨"
+        "passkey": "",
+        "shield": "",
+        "otp": "",
+        "alt": "",
+        "verified": "",
+        "warn": "",
+        "ban": "",
+        "lock": "",
+        "unlock": "",
+        "biometric": "",
+        "image_captcha": "",
+        "pattern": "",
+        "social": "",
+        "rules": "",
+        "turnstile": "",
+        "dot_green": "",
+        "dot_red": "",
+        "prev": "",
+        "next": "",
+        "deploy": "",
+        "wizard": ""
     }
 
     @classmethod
@@ -92,7 +92,7 @@ class Emojis:
             if emoji:
                 return str(emoji)
 
-        return cls.FALLBACKS.get(key, "🔹")
+        return cls.FALLBACKS.get(key, "")
 
     @classmethod
     async def ensure_guild_emojis(cls, guild: discord.Guild) -> Dict[str, str]:
@@ -119,7 +119,7 @@ class Emojis:
                         reason="[Passkey Gatekeeper] Auto-upload custom neon emojis pack"
                     )
                     uploaded[name] = str(new_emoji)
-                    log.info(f"✅ Successfully uploaded custom emoji {name} to {guild.name}")
+                    log.info(f" Successfully uploaded custom emoji {name} to {guild.name}")
                 except Exception as e:
                     log.warning(f"Could not upload emoji {name} to {guild.name}: {e}")
 

@@ -18,7 +18,7 @@ class Events(commands.Cog):
         target_chan = guild.system_channel or next((c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None)
         if target_chan:
             embed = discord.Embed(
-                title="🔑 Thanks for adding Passkey!",
+                title=" Thanks for adding Passkey!",
                 description=(
                     "Passkey is your server's ultimate **Gatekeeper, AutoMod & Security Engine**.\n\n"
                     "**Quick Setup:**\n"
@@ -53,7 +53,7 @@ class Events(commands.Cog):
                     chan = guild.get_channel(int(log_chan_id))
                     if chan:
                         embed = discord.Embed(
-                            title="⚠️ Suspicious / Underage Account Joined",
+                            title=" Suspicious / Underage Account Joined",
                             description=f"{member.mention} (`{member.id}`) created only **{age_days} days ago** (Server min: {min_age_days} days).",
                             color=0xF59E0B,
                             timestamp=datetime.datetime.now(datetime.timezone.utc)
@@ -70,17 +70,17 @@ class Events(commands.Cog):
             return
         if isinstance(error, commands.MissingPermissions):
             perms = ", ".join(error.missing_permissions)
-            await ctx.send(f"❌ You lack the required permission: `{perms}`", ephemeral=True)
+            await ctx.send(f" You lack the required permission: `{perms}`", ephemeral=True)
             return
         if isinstance(error, commands.BotMissingPermissions):
             perms = ", ".join(error.missing_permissions)
-            await ctx.send(f"❌ Passkey lacks required bot permissions: `{perms}`", ephemeral=True)
+            await ctx.send(f" Passkey lacks required bot permissions: `{perms}`", ephemeral=True)
             return
         if isinstance(error, commands.BadArgument):
-            await ctx.send(f"❌ Invalid argument: {error}", ephemeral=True)
+            await ctx.send(f" Invalid argument: {error}", ephemeral=True)
             return
         if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(f"❌ Missing required parameter: `{error.param.name}`. Use `.help {ctx.command}` for syntax.", ephemeral=True)
+            await ctx.send(f" Missing required parameter: `{error.param.name}`. Use `.help {ctx.command}` for syntax.", ephemeral=True)
             return
 
         log.error(f"Unhandled command error on {ctx.command}: {error}")

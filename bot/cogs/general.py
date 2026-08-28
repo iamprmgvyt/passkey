@@ -59,11 +59,11 @@ class General(commands.Cog, name="General & Utilities"):
             color=0x6366F1
         )
         embed.add_field(name=f"{shield_emoji} Protected Guilds", value=f"`{guilds:,}`", inline=True)
-        embed.add_field(name=f"👥 Monitored Users", value=f"`{users:,}`", inline=True)
-        embed.add_field(name=f"⚡ Gateway Latency", value=f"`{round(self.bot.latency * 1000)}ms`", inline=True)
+        embed.add_field(name=f" Monitored Users", value=f"`{users:,}`", inline=True)
+        embed.add_field(name=f" Gateway Latency", value=f"`{round(self.bot.latency * 1000)}ms`", inline=True)
         embed.add_field(name=f"{verified_emoji} Total Verifications", value=f"`{total_verifs:,}`", inline=True)
         embed.add_field(name=f"{warn_emoji} Security Interventions", value=f"`{total_warns:,}`", inline=True)
-        embed.add_field(name=f"⏱️ Bot Uptime", value=f"`{str(self.bot.uptime()).split('.')[0]}`", inline=True)
+        embed.add_field(name=f" Bot Uptime", value=f"`{str(self.bot.uptime()).split('.')[0]}`", inline=True)
         embed.set_footer(text="Passkey Zero-Trust Security Network")
         await ctx.send(embed=embed)
 
@@ -85,12 +85,12 @@ class General(commands.Cog, name="General & Utilities"):
         if self.bot.user.display_avatar:
             embed.set_thumbnail(url=self.bot.user.display_avatar.url)
 
-        embed.add_field(name="🐍 Python", value=f"`{sys.version.split()[0]}`", inline=True)
-        embed.add_field(name="📦 Discord.py", value=f"`v{discord.__version__}`", inline=True)
-        embed.add_field(name="💾 RAM Usage", value=f"`{ram_mb:.1f} MB`", inline=True)
-        embed.add_field(name="⚙️ CPU Usage", value=f"`{cpu_pct}%`", inline=True)
-        embed.add_field(name="⏱️ Uptime", value=f"`{str(self.bot.uptime()).split('.')[0]}`", inline=True)
-        embed.add_field(name="🌐 Shards / Guilds", value=f"`1 / {len(self.bot.guilds)}`", inline=True)
+        embed.add_field(name=" Python", value=f"`{sys.version.split()[0]}`", inline=True)
+        embed.add_field(name=" Discord.py", value=f"`v{discord.__version__}`", inline=True)
+        embed.add_field(name=" RAM Usage", value=f"`{ram_mb:.1f} MB`", inline=True)
+        embed.add_field(name=" CPU Usage", value=f"`{cpu_pct}%`", inline=True)
+        embed.add_field(name=" Uptime", value=f"`{str(self.bot.uptime()).split('.')[0]}`", inline=True)
+        embed.add_field(name=" Shards / Guilds", value=f"`1 / {len(self.bot.guilds)}`", inline=True)
 
         embed.set_footer(text="Passkey Cloud Core • High Availability")
         await ctx.send(embed=embed)
@@ -100,7 +100,7 @@ class General(commands.Cog, name="General & Utilities"):
         """Display detailed information about the current server."""
         guild = ctx.guild
         if not guild:
-            await ctx.send("❌ This command must be used within a server.", ephemeral=True)
+            await ctx.send(" This command must be used within a server.", ephemeral=True)
             return
 
         total_members = guild.member_count or 0
@@ -120,12 +120,12 @@ class General(commands.Cog, name="General & Utilities"):
         if guild.icon:
             embed.set_thumbnail(url=guild.icon.url)
 
-        embed.add_field(name="👑 Server Owner", value=f"{guild.owner.mention if guild.owner else 'Unknown'}", inline=True)
-        embed.add_field(name="🆔 Guild ID", value=f"`{guild.id}`", inline=True)
-        embed.add_field(name="📅 Created On", value=f"<t:{int(guild.created_at.timestamp())}:D>", inline=True)
-        embed.add_field(name="👥 Members", value=f"Total: `{total_members}` (Humans: `{humans}`, Bots: `{bots}`)", inline=True)
-        embed.add_field(name="💬 Channels", value=f"Text: `{text_channels}` | Voice: `{voice_channels}`", inline=True)
-        embed.add_field(name="🎭 Roles", value=f"`{roles_count}` roles", inline=True)
+        embed.add_field(name=" Server Owner", value=f"{guild.owner.mention if guild.owner else 'Unknown'}", inline=True)
+        embed.add_field(name=" Guild ID", value=f"`{guild.id}`", inline=True)
+        embed.add_field(name=" Created On", value=f"<t:{int(guild.created_at.timestamp())}:D>", inline=True)
+        embed.add_field(name=" Members", value=f"Total: `{total_members}` (Humans: `{humans}`, Bots: `{bots}`)", inline=True)
+        embed.add_field(name=" Channels", value=f"Text: `{text_channels}` | Voice: `{voice_channels}`", inline=True)
+        embed.add_field(name=" Roles", value=f"`{roles_count}` roles", inline=True)
 
         embed.set_footer(text=f"Passkey Protected • Verification System Ready")
         await ctx.send(embed=embed)
@@ -148,11 +148,11 @@ class General(commands.Cog, name="General & Utilities"):
             color=member.color or 0x6366F1
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        embed.add_field(name="👤 Username", value=f"{member} (`{member.id}`)", inline=True)
-        embed.add_field(name="🤖 Bot Account", value="Yes" if member.bot else "No", inline=True)
-        embed.add_field(name="📅 Account Created", value=f"<t:{int(member.created_at.timestamp())}:R>", inline=True)
-        embed.add_field(name="📥 Joined Server", value=f"<t:{int(member.joined_at.timestamp())}:R>" if member.joined_at else "Unknown", inline=True)
-        embed.add_field(name=f"🎭 Roles [{len(member.roles)-1}]", value=roles_str, inline=False)
+        embed.add_field(name=" Username", value=f"{member} (`{member.id}`)", inline=True)
+        embed.add_field(name=" Bot Account", value="Yes" if member.bot else "No", inline=True)
+        embed.add_field(name=" Account Created", value=f"<t:{int(member.created_at.timestamp())}:R>", inline=True)
+        embed.add_field(name=" Joined Server", value=f"<t:{int(member.joined_at.timestamp())}:R>" if member.joined_at else "Unknown", inline=True)
+        embed.add_field(name=f" Roles [{len(member.roles)-1}]", value=roles_str, inline=False)
 
         await ctx.send(embed=embed)
 
@@ -162,7 +162,7 @@ class General(commands.Cog, name="General & Utilities"):
         """View high-resolution avatar of a user."""
         user = user or ctx.author
         embed = discord.Embed(
-            title=f"🖼️ Avatar for {user.display_name}",
+            title=f" Avatar for {user.display_name}",
             color=0x6366F1
         )
         embed.set_image(url=user.display_avatar.url)
@@ -270,7 +270,7 @@ class General(commands.Cog, name="General & Utilities"):
             )
         else:
             embed = discord.Embed(
-                title="⚠️ Emojis Status",
+                title=" Emojis Status",
                 description="All emojis are already uploaded or bot lacks `Manage Emojis` permission.",
                 color=0xF59E0B
             )

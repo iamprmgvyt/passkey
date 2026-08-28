@@ -102,7 +102,7 @@ async def stats_page(request: Request):
 
     <div class="infra-grid">
       <div class="glass-card infra-card">
-        <h2 style="font-size:1.25rem;font-weight:800;margin:0 0 16px;color:#818cf8;">☁️ Cloud Infrastructure</h2>
+        <h2 style="font-size:1.25rem;font-weight:800;margin:0 0 16px;color:#818cf8;"> Cloud Infrastructure</h2>
         <div style="display:flex;flex-direction:column;gap:12px;font-size:0.9rem;">
           <div style="display:flex;justify-content:space-between;">
             <span style="color:var(--text-muted);">Cloud SQLite:</span>
@@ -124,7 +124,7 @@ async def stats_page(request: Request):
       </div>
 
       <div class="glass-card infra-card">
-        <h2 style="font-size:1.25rem;font-weight:800;margin:0 0 16px;color:#a855f7;">💻 Server Resource Usage</h2>
+        <h2 style="font-size:1.25rem;font-weight:800;margin:0 0 16px;color:#a855f7;"> Server Resource Usage</h2>
         <div style="display:flex;flex-direction:column;gap:12px;font-size:0.9rem;">
           <div style="display:flex;justify-content:space-between;">
             <span style="color:var(--text-muted);">CPU Utilization:</span>

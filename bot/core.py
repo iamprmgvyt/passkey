@@ -61,7 +61,7 @@ class PasskeyBot(commands.Bot):
             try:
                 synced_cmds = await self.tree.sync()
                 self.synced = True
-                log.info(f"✅ Successfully synced {len(synced_cmds)} global Slash Commands with Discord!")
+                log.info(f" Successfully synced {len(synced_cmds)} global Slash Commands with Discord!")
             except Exception as e:
                 log.warning(f"Auto-syncing slash commands failed: {e}")
 
@@ -70,7 +70,7 @@ class PasskeyBot(commands.Bot):
             try:
                 uploaded = await Emojis.ensure_guild_emojis(guild)
                 if uploaded:
-                    log.info(f"✅ Synced {len(uploaded)} Custom Neon Emojis into {guild.name}")
+                    log.info(f" Synced {len(uploaded)} Custom Neon Emojis into {guild.name}")
             except Exception as e:
                 log.warning(f"Could not auto-sync emojis in {guild.name}: {e}")
 

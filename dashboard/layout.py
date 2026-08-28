@@ -194,7 +194,7 @@ NAV_BAR = """
     <a href="/domain"><img src="/static/emojis/warn.png" class="emoji-icon" alt=""> Threat Scanner</a>
     <a href="/stats"><img src="/static/emojis/verified.png" class="emoji-icon" alt=""> Telemetry</a>
     <a href="/manage"><img src="/static/emojis/lock.png" class="emoji-icon" alt=""> Dashboard</a>
-    <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">🌓 Theme</button>
+    <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn"> Theme</button>
     <a href="https://discord.com/oauth2/authorize?client_id=1452522495965134908&permissions=1395293285622&integration_type=0&scope=bot+applications.commands" target="_blank" class="nav-btn">
       <img src="/static/emojis/passkey.png" style="width:20px;height:20px;border-radius:4px;" alt="">
       <span>Add to Discord</span>

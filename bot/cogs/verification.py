@@ -2,20 +2,20 @@
 """
 Passkey Bot — Complete Next-Gen Multi-Mode Verification Engine.
 Supports 9 Verification Modes:
-1. 🌐 Web Portal (Cloudflare Turnstile CAPTCHA + Anti-Alt IP)
-2. 📱 WebAuthn Biometric (Hardware Touch ID, Face ID, Windows Hello, YubiKey)
-3. ✉️ Email OTP (6-digit code via Zoho SMTP + Alt Email check)
-4. ⚡ Direct 1-Click Button (Instant In-Discord)
-5. 🔢 Math CAPTCHA Modal (Dynamic arithmetic challenge)
-6. 🖼️ Image Visual CAPTCHA (In-Discord Pillow distorted security image)
-7. 🎮 Emoji Sequence Pattern (Interactive 3-symbol sequence button matching)
-8. 🔗 Social Connection Verification (Checks linked accounts)
-9. 📝 Server Rules Agreement & Quiz Modal
+1.  Web Portal (Cloudflare Turnstile CAPTCHA + Anti-Alt IP)
+2.  WebAuthn Biometric (Hardware Touch ID, Face ID, Windows Hello, YubiKey)
+3.  Email OTP (6-digit code via Zoho SMTP + Alt Email check)
+4.  Direct 1-Click Button (Instant In-Discord)
+5.  Math CAPTCHA Modal (Dynamic arithmetic challenge)
+6.  Image Visual CAPTCHA (In-Discord Pillow distorted security image)
+7.  Emoji Sequence Pattern (Interactive 3-symbol sequence button matching)
+8.  Social Connection Verification (Checks linked accounts)
+9.  Server Rules Agreement & Quiz Modal
 
 Plus:
 - 5-Attempt Verification Limit Enforcement (Warnings -> Kick -> Ban)
 - Anti-Alt Enforcement Policy (Quarantine both accounts, Log only, Kick, Ban, Ignore)
-- Interactive 5-Step Setup Wizard with Pagination (◀️ / ▶️) & ChannelSelect
+- Interactive 5-Step Setup Wizard with Pagination ( / ) & ChannelSelect
 - 10 Global Languages (English default, Vietnamese, Japanese, Korean, etc.)
 - Dynamic Custom Emoji System Integration (utils.emojis)
 """
@@ -58,7 +58,7 @@ async def handle_failed_attempt(bot, guild: discord.Guild, member: discord.Membe
     remaining = 5 - (failed_count % 5 if failed_count % 5 != 0 else 5)
 
     if failed_count % 5 != 0:
-        return f"❌ {reason}. You have **{remaining} attempt(s)** remaining before a penalty."
+        return f" {reason}. You have **{remaining} attempt(s)** remaining before a penalty."
 
     # User hit a multiple of 5 failed attempts! Check their total warnings count
     warn_count = 0
@@ -70,37 +70,37 @@ async def handle_failed_attempt(bot, guild: discord.Guild, member: discord.Membe
         if bot.db:
             await bot.db.add_warning(guild.id, member.id, bot.user.id, "Exceeded 5 failed verification attempts (Warning #1)")
         try:
-            await member.send(f"⚠️ **[Warning #1]** You failed verification 5 times in **{guild.name}**. Please be careful!")
+            await member.send(f" **[Warning #1]** You failed verification 5 times in **{guild.name}**. Please be careful!")
         except Exception:
             pass
-        return "⚠️ **Warning #1 Issued!** You exceeded 5 failed verification attempts."
+        return " **Warning #1 Issued!** You exceeded 5 failed verification attempts."
 
     elif warn_count == 1:
         if bot.db:
             await bot.db.add_warning(guild.id, member.id, bot.user.id, "Exceeded 10 failed verification attempts (Warning #2)")
         try:
-            await member.send(f"⚠️ **[Warning #2]** You failed verification 10 times in **{guild.name}**. One more violation will result in a KICK!")
+            await member.send(f" **[Warning #2]** You failed verification 10 times in **{guild.name}**. One more violation will result in a KICK!")
         except Exception:
             pass
-        return "⚠️ **Warning #2 Issued!** You exceeded 10 failed verification attempts. Further failures will result in a KICK."
+        return " **Warning #2 Issued!** You exceeded 10 failed verification attempts. Further failures will result in a KICK."
 
     elif warn_count == 2:
         if bot.db:
             await bot.db.add_warning(guild.id, member.id, bot.user.id, "Exceeded verification limit 3 times (KICK)")
         try:
-            await member.send(f"👢 **You were kicked from {guild.name}** for failing verification 3 consecutive times.")
+            await member.send(f" **You were kicked from {guild.name}** for failing verification 3 consecutive times.")
             await member.kick(reason="[Passkey Gatekeeper] Exceeded 5 failed verification attempts 3 times.")
         except Exception as e:
             log.warning(f"Could not kick member {member}: {e}")
-        return "👢 **Kicked from Server!** You exceeded verification attempts 3 times."
+        return " **Kicked from Server!** You exceeded verification attempts 3 times."
 
     else:
         try:
-            await member.send(f"🔨 **You have been banned from {guild.name}** due to repeated verification abuse.")
+            await member.send(f" **You have been banned from {guild.name}** due to repeated verification abuse.")
             await member.ban(reason="[Passkey Gatekeeper] Repeated verification abuse after kick.", delete_message_days=1)
         except Exception as e:
             log.warning(f"Could not ban member {member}: {e}")
-        return "🔨 **Banned from Server!** Repeated verification abuse."
+        return " **Banned from Server!** Repeated verification abuse."
 
 
 async def handle_alt_detection(bot, guild: discord.Guild, member: discord.Member, alt_user_id: str, method: str = "IP/Email") -> Tuple[bool, str]:
@@ -143,7 +143,7 @@ async def handle_alt_detection(bot, guild: discord.Guild, member: discord.Member
 
     if action == "kick":
         try:
-            await member.send(f"❌ You were kicked from **{guild.name}** because this account is linked to an existing member ({alt_mention}).")
+            await member.send(f" You were kicked from **{guild.name}** because this account is linked to an existing member ({alt_mention}).")
             await member.kick(reason=f"[Passkey Anti-Alt] Linked to existing member {alt_user_id}")
         except Exception:
             pass
@@ -151,7 +151,7 @@ async def handle_alt_detection(bot, guild: discord.Guild, member: discord.Member
 
     if action == "ban":
         try:
-            await member.send(f"🔨 You were banned from **{guild.name}** for attempting to join with an alternate account.")
+            await member.send(f" You were banned from **{guild.name}** for attempting to join with an alternate account.")
             await member.ban(reason=f"[Passkey Anti-Alt] Linked to existing member {alt_user_id}", delete_message_days=0)
         except Exception:
             pass
@@ -222,7 +222,7 @@ async def grant_verified_role(bot, guild: discord.Guild, member: discord.Member,
             log_chan = guild.get_channel(int(log_channel_id))
             if log_chan:
                 embed = discord.Embed(
-                    title="🔑 Member Verified",
+                    title=" Member Verified",
                     description=f"{member.mention} (`{member.id}`) passed gatekeeper verification.",
                     color=0x10B981,
                     timestamp=datetime.datetime.now(datetime.timezone.utc)
@@ -244,7 +244,7 @@ async def grant_verified_role(bot, guild: discord.Guild, member: discord.Member,
 
 # --- Modals & Views for Verification Modes ---
 
-class MathCaptchaModal(discord.ui.Modal, title="🔢 Math Security Challenge"):
+class MathCaptchaModal(discord.ui.Modal, title=" Math Security Challenge"):
     def __init__(self, bot, guild: discord.Guild, num1: int, num2: int):
         super().__init__()
         self.bot = bot
@@ -270,12 +270,12 @@ class MathCaptchaModal(discord.ui.Modal, title="🔢 Math Security Challenge"):
         VERIFY_FAILED_ATTEMPTS.pop((self.guild.id, interaction.user.id), None)
         success, msg = await grant_verified_role(self.bot, self.guild, interaction.user, method="math_captcha")
         if success:
-            await interaction.response.send_message(f"✅ **Verification Successful!** Welcome to **{self.guild.name}**!", ephemeral=True)
+            await interaction.response.send_message(f" **Verification Successful!** Welcome to **{self.guild.name}**!", ephemeral=True)
         else:
-            await interaction.response.send_message(f"⚠️ {msg}", ephemeral=True)
+            await interaction.response.send_message(f" {msg}", ephemeral=True)
 
 
-class ImageCaptchaModal(discord.ui.Modal, title="🖼️ Visual CAPTCHA Verification"):
+class ImageCaptchaModal(discord.ui.Modal, title=" Visual CAPTCHA Verification"):
     def __init__(self, bot, guild: discord.Guild, expected_code: str):
         super().__init__()
         self.bot = bot
@@ -302,9 +302,9 @@ class ImageCaptchaModal(discord.ui.Modal, title="🖼️ Visual CAPTCHA Verifica
         IMAGE_CAPTCHA_STORE.pop((self.guild.id, interaction.user.id), None)
         success, msg = await grant_verified_role(self.bot, self.guild, interaction.user, method="image_captcha")
         if success:
-            await interaction.response.send_message(f"✅ **Verification Successful!** Welcome to **{self.guild.name}**!", ephemeral=True)
+            await interaction.response.send_message(f" **Verification Successful!** Welcome to **{self.guild.name}**!", ephemeral=True)
         else:
-            await interaction.response.send_message(f"⚠️ {msg}", ephemeral=True)
+            await interaction.response.send_message(f" {msg}", ephemeral=True)
 
 
 class ImageCaptchaChallengeView(discord.ui.View):
@@ -314,7 +314,7 @@ class ImageCaptchaChallengeView(discord.ui.View):
         self.guild = guild
         self.code = code
 
-    @discord.ui.button(label="Submit CAPTCHA Code", style=discord.ButtonStyle.primary, emoji="⌨️")
+    @discord.ui.button(label="Submit CAPTCHA Code", style=discord.ButtonStyle.primary, emoji="")
     async def btn_submit(self, interaction: discord.Interaction, button: discord.ui.Button):
         modal = ImageCaptchaModal(self.bot, self.guild, self.code)
         await interaction.response.send_modal(modal)
@@ -351,17 +351,17 @@ class EmojiSequenceView(discord.ui.View):
                 VERIFY_FAILED_ATTEMPTS.pop((self.guild.id, interaction.user.id), None)
                 success, msg = await grant_verified_role(self.bot, self.guild, interaction.user, method="emoji_sequence")
                 if success:
-                    await interaction.response.send_message(f"🎉 **Pattern Matched!** Welcome to **{self.guild.name}**!", ephemeral=True)
+                    await interaction.response.send_message(f" **Pattern Matched!** Welcome to **{self.guild.name}**!", ephemeral=True)
                 else:
-                    await interaction.response.send_message(f"⚠️ {msg}", ephemeral=True)
+                    await interaction.response.send_message(f" {msg}", ephemeral=True)
             else:
                 progress = " ".join(self.entered_sequence)
-                await interaction.response.send_message(f"🧩 Pattern Progress: `{progress}` ({len(self.entered_sequence)}/{len(self.target_sequence)})", ephemeral=True)
+                await interaction.response.send_message(f" Pattern Progress: `{progress}` ({len(self.entered_sequence)}/{len(self.target_sequence)})", ephemeral=True)
 
         return callback
 
 
-class ServerRulesModal(discord.ui.Modal, title="📜 Server Rules & Agreement"):
+class ServerRulesModal(discord.ui.Modal, title=" Server Rules & Agreement"):
     def __init__(self, bot, guild: discord.Guild):
         super().__init__()
         self.bot = bot
@@ -386,9 +386,9 @@ class ServerRulesModal(discord.ui.Modal, title="📜 Server Rules & Agreement"):
         VERIFY_FAILED_ATTEMPTS.pop((self.guild.id, interaction.user.id), None)
         success, msg = await grant_verified_role(self.bot, self.guild, interaction.user, method="rules_agreement")
         if success:
-            await interaction.response.send_message(f"✅ **Rules Accepted!** Welcome to **{self.guild.name}**!", ephemeral=True)
+            await interaction.response.send_message(f" **Rules Accepted!** Welcome to **{self.guild.name}**!", ephemeral=True)
         else:
-            await interaction.response.send_message(f"⚠️ {msg}", ephemeral=True)
+            await interaction.response.send_message(f" {msg}", ephemeral=True)
 
 
 class VerifyButtonView(discord.ui.View):
@@ -403,11 +403,11 @@ class VerifyButtonView(discord.ui.View):
                 if em:
                     self.verify_button.emoji = em
 
-    @discord.ui.button(label="Click to Verify", style=discord.ButtonStyle.success, emoji="🔑", custom_id="passkey:btn_verify")
+    @discord.ui.button(label="Click to Verify", style=discord.ButtonStyle.success, emoji="", custom_id="passkey:btn_verify")
     async def verify_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         guild = interaction.guild or self.bot.get_guild(self.guild_id)
         if not guild:
-            await interaction.response.send_message("❌ Server context not found.", ephemeral=True)
+            await interaction.response.send_message(" Server context not found.", ephemeral=True)
             return
 
         config = {}
@@ -435,9 +435,9 @@ class VerifyButtonView(discord.ui.View):
         if mode == "button":
             success, msg = await grant_verified_role(self.bot, guild, interaction.user, method="button")
             if success:
-                await interaction.response.send_message("✅ **Verified successfully!** You now have access to the server.", ephemeral=True)
+                await interaction.response.send_message(" **Verified successfully!** You now have access to the server.", ephemeral=True)
             else:
-                await interaction.response.send_message(f"❌ {msg}", ephemeral=True)
+                await interaction.response.send_message(f" {msg}", ephemeral=True)
             return
 
         # 2. Math CAPTCHA Modal Mode
@@ -453,7 +453,7 @@ class VerifyButtonView(discord.ui.View):
             buf, code = generate_image_captcha()
             file = discord.File(buf, filename="passkey_captcha.png")
             embed = discord.Embed(
-                title="🖼️ Passkey Visual Security Challenge",
+                title=" Passkey Visual Security Challenge",
                 description="Please read the 5 characters inside the image below and click **Submit CAPTCHA Code** to answer.",
                 color=0x6366F1
             )
@@ -465,15 +465,15 @@ class VerifyButtonView(discord.ui.View):
 
         # 4. Emoji Sequence Pattern Mode
         if mode == "pattern":
-            emojis_pool = ["🔑", "🛡️", "⚡", "💎", "⭐", "🔒"]
+            emojis_pool = ["", "", "", "", "", ""]
             target_seq = random.sample(emojis_pool, 3)
             seq_display = " ".join(target_seq)
             embed = discord.Embed(
-                title="🎮 Passkey Emoji Pattern Challenge",
+                title=" Passkey Emoji Pattern Challenge",
                 description=(
                     f"Please click the buttons below in this **exact sequence**:\n\n"
                     f"# {seq_display}\n\n"
-                    f"⚠️ *Click each emoji in order. One mistake will reset the attempt.*"
+                    f" *Click each emoji in order. One mistake will reset the attempt.*"
                 ),
                 color=0x6366F1
             )
@@ -490,7 +490,7 @@ class VerifyButtonView(discord.ui.View):
         # 6. Social Connection Check Mode
         if mode == "social":
             embed = discord.Embed(
-                title="🔗 Passkey Social Account Verification",
+                title=" Passkey Social Account Verification",
                 description=(
                     f"Hello **{interaction.user.display_name}**,\n\n"
                     f"This server requires members to have at least **1 connected account** on their Discord profile (e.g. Steam, YouTube, GitHub, Twitter, Spotify, Reddit, etc.).\n\n"
@@ -503,7 +503,7 @@ class VerifyButtonView(discord.ui.View):
             from utils.config import Config
             verify_url = f"{Config.DASHBOARD_URL.rstrip('/')}/verify?session={token}"
             view = discord.ui.View()
-            view.add_item(discord.ui.Button(label="Check Social Connections", url=verify_url, style=discord.ButtonStyle.link, emoji="🔗"))
+            view.add_item(discord.ui.Button(label="Check Social Connections", url=verify_url, style=discord.ButtonStyle.link, emoji=""))
             await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             return
 
@@ -523,32 +523,32 @@ class VerifyButtonView(discord.ui.View):
         is_biometric = (mode == "biometric")
 
         if is_biometric:
-            title = "📱 Passkey — Hardware Biometric Verification"
+            title = " Passkey — Hardware Biometric Verification"
             desc = (
                 f"Hello **{interaction.user.display_name}**,\n\n"
                 f"Click the button below to verify using **Hardware Passkey (Touch ID, Face ID, Windows Hello, or YubiKey)**.\n\n"
-                f"⏱️ *Session remains active for 10 minutes.*"
+                f" *Session remains active for 10 minutes.*"
             )
             btn_label = "Verify with Biometrics / TouchID"
-            btn_emoji = "📱"
+            btn_emoji = ""
         elif is_email:
-            title = "📧 Passkey — Cổng Xác Thực Email" if lang == "vi" else "📧 Passkey — Email Verification Portal"
+            title = " Passkey — Cổng Xác Thực Email" if lang == "vi" else " Passkey — Email Verification Portal"
             desc = (
-                f"Xin chào **{interaction.user.display_name}**,\n\nVui lòng bấm nút bên dưới để mở cổng **Xác thực mã OTP Email** cho server **{guild.name}**.\n\n💡 **Lưu ý:** Nếu không thấy mã trong Hộp thư đến, vui lòng kiểm tra thêm mục **Thư rác / Spam** nhé!"
+                f"Xin chào **{interaction.user.display_name}**,\n\nVui lòng bấm nút bên dưới để mở cổng **Xác thực mã OTP Email** cho server **{guild.name}**.\n\n **Lưu ý:** Nếu không thấy mã trong Hộp thư đến, vui lòng kiểm tra thêm mục **Thư rác / Spam** nhé!"
             ) if lang == "vi" else (
-                f"Hello **{interaction.user.display_name}**,\n\nClick the button below to complete **Email OTP Verification** for **{guild.name}**.\n\n💡 **Note:** If you don't see the code in your inbox, check your **Spam folder**!"
+                f"Hello **{interaction.user.display_name}**,\n\nClick the button below to complete **Email OTP Verification** for **{guild.name}**.\n\n **Note:** If you don't see the code in your inbox, check your **Spam folder**!"
             )
             btn_label = "Mở Cổng Xác Thực Email" if lang == "vi" else "Open Email Verification"
-            btn_emoji = "✉️"
+            btn_emoji = ""
         else:
-            title = "🔑 Passkey — Cổng Xác Thực Người Dùng" if lang == "vi" else "🔑 Passkey — Human Verification Portal"
+            title = " Passkey — Cổng Xác Thực Người Dùng" if lang == "vi" else " Passkey — Human Verification Portal"
             desc = (
-                f"Xin chào **{interaction.user.display_name}**,\n\nVui lòng bấm nút bên dưới để hoàn tất xác thực Cloudflare Turnstile cho **{guild.name}**.\n\n⚠️ *Bạn có tối đa 5 lần thử.*"
+                f"Xin chào **{interaction.user.display_name}**,\n\nVui lòng bấm nút bên dưới để hoàn tất xác thực Cloudflare Turnstile cho **{guild.name}**.\n\n *Bạn có tối đa 5 lần thử.*"
             ) if lang == "vi" else (
-                f"Hello **{interaction.user.display_name}**,\n\nPlease click the button below to complete Cloudflare Turnstile verification for **{guild.name}**.\n\n⚠️ *You have up to 5 attempts.*"
+                f"Hello **{interaction.user.display_name}**,\n\nPlease click the button below to complete Cloudflare Turnstile verification for **{guild.name}**.\n\n *You have up to 5 attempts.*"
             )
             btn_label = "Mở Cổng Xác Thực" if lang == "vi" else "Open Verification Portal"
-            btn_emoji = "🌐"
+            btn_emoji = ""
 
         embed = discord.Embed(title=title, description=desc, color=0x6366F1)
         embed.set_footer(text="Passkey Gatekeeper • Zero-Trust Verification Network")
@@ -588,20 +588,20 @@ class MultiStepSetupWizardView(discord.ui.View):
         # Step 1: All 9 Verification Modes
         if self.current_step == 1:
             select = discord.ui.Select(
-                placeholder="1️⃣ Select Verification Method (9 Modes Available)...",
+                placeholder="1⃣ Select Verification Method (9 Modes Available)...",
                 min_values=1,
                 max_values=1,
                 row=0,
                 options=[
-                    discord.SelectOption(label="🌐 Web Portal (Cloudflare Turnstile)", value="web", description="Browser challenge with Cloudflare Turnstile + Anti-Alt IP", default=(self.selected_mode == "web")),
-                    discord.SelectOption(label="📱 Biometric Passkey (Touch ID / Face ID)", value="biometric", description="Hardware Passkey WebAuthn biometric verification", default=(self.selected_mode == "biometric")),
-                    discord.SelectOption(label="✉️ Email OTP", value="email", description="Sends 6-digit verification code to member email", default=(self.selected_mode == "email")),
-                    discord.SelectOption(label="🖼️ In-Discord Image CAPTCHA", value="image_captcha", description="Distorted security image challenge inside Discord", default=(self.selected_mode == "image_captcha")),
-                    discord.SelectOption(label="🎮 Emoji Sequence Pattern", value="pattern", description="Randomized 3-symbol sequence button matching challenge", default=(self.selected_mode == "pattern")),
-                    discord.SelectOption(label="🔗 Social Connection Check", value="social", description="Requires linked Steam, GitHub, YouTube, Twitter, etc.", default=(self.selected_mode == "social")),
-                    discord.SelectOption(label="🔢 Math CAPTCHA Modal", value="captcha", description="Interactive math challenge pop-up in Discord", default=(self.selected_mode == "captcha")),
-                    discord.SelectOption(label="📝 Server Rules Quiz", value="rules", description="Requires typing 'I AGREE' to server rules", default=(self.selected_mode == "rules")),
-                    discord.SelectOption(label="⚡ Direct 1-Click Button", value="button", description="Instant verification inside Discord with single click", default=(self.selected_mode == "button")),
+                    discord.SelectOption(label=" Web Portal (Cloudflare Turnstile)", value="web", description="Browser challenge with Cloudflare Turnstile + Anti-Alt IP", default=(self.selected_mode == "web")),
+                    discord.SelectOption(label=" Biometric Passkey (Touch ID / Face ID)", value="biometric", description="Hardware Passkey WebAuthn biometric verification", default=(self.selected_mode == "biometric")),
+                    discord.SelectOption(label=" Email OTP", value="email", description="Sends 6-digit verification code to member email", default=(self.selected_mode == "email")),
+                    discord.SelectOption(label=" In-Discord Image CAPTCHA", value="image_captcha", description="Distorted security image challenge inside Discord", default=(self.selected_mode == "image_captcha")),
+                    discord.SelectOption(label=" Emoji Sequence Pattern", value="pattern", description="Randomized 3-symbol sequence button matching challenge", default=(self.selected_mode == "pattern")),
+                    discord.SelectOption(label=" Social Connection Check", value="social", description="Requires linked Steam, GitHub, YouTube, Twitter, etc.", default=(self.selected_mode == "social")),
+                    discord.SelectOption(label=" Math CAPTCHA Modal", value="captcha", description="Interactive math challenge pop-up in Discord", default=(self.selected_mode == "captcha")),
+                    discord.SelectOption(label=" Server Rules Quiz", value="rules", description="Requires typing 'I AGREE' to server rules", default=(self.selected_mode == "rules")),
+                    discord.SelectOption(label=" Direct 1-Click Button", value="button", description="Instant verification inside Discord with single click", default=(self.selected_mode == "button")),
                 ]
             )
             select.callback = self._on_select_mode
@@ -610,21 +610,21 @@ class MultiStepSetupWizardView(discord.ui.View):
         # Step 2: Language
         elif self.current_step == 2:
             select = discord.ui.Select(
-                placeholder="2️⃣ Select Default Server Language...",
+                placeholder="2⃣ Select Default Server Language...",
                 min_values=1,
                 max_values=1,
                 row=0,
                 options=[
-                    discord.SelectOption(label="🇬🇧 English", value="en", description="Default system language", default=(self.selected_lang == "en")),
-                    discord.SelectOption(label="🇻🇳 Tiếng Việt", value="vi", description="Giao diện Tiếng Việt", default=(self.selected_lang == "vi")),
-                    discord.SelectOption(label="🇯🇵 日本語", value="ja", description="Japanese interface", default=(self.selected_lang == "ja")),
-                    discord.SelectOption(label="🇰🇷 한국어", value="ko", description="Korean interface", default=(self.selected_lang == "ko")),
-                    discord.SelectOption(label="🇨🇳 简体中文", value="zh", description="Chinese interface", default=(self.selected_lang == "zh")),
-                    discord.SelectOption(label="🇪🇸 Español", value="es", description="Spanish interface", default=(self.selected_lang == "es")),
-                    discord.SelectOption(label="🇫🇷 Français", value="fr", description="French interface", default=(self.selected_lang == "fr")),
-                    discord.SelectOption(label="🇩🇪 Deutsch", value="de", description="German interface", default=(self.selected_lang == "de")),
-                    discord.SelectOption(label="🇷🇺 Русский", value="ru", description="Russian interface", default=(self.selected_lang == "ru")),
-                    discord.SelectOption(label="🇧🇷 Português", value="pt", description="Portuguese interface", default=(self.selected_lang == "pt")),
+                    discord.SelectOption(label=" English", value="en", description="Default system language", default=(self.selected_lang == "en")),
+                    discord.SelectOption(label=" Tiếng Việt", value="vi", description="Giao diện Tiếng Việt", default=(self.selected_lang == "vi")),
+                    discord.SelectOption(label=" 日本語", value="ja", description="Japanese interface", default=(self.selected_lang == "ja")),
+                    discord.SelectOption(label=" 한국어", value="ko", description="Korean interface", default=(self.selected_lang == "ko")),
+                    discord.SelectOption(label=" 简体中文", value="zh", description="Chinese interface", default=(self.selected_lang == "zh")),
+                    discord.SelectOption(label=" Español", value="es", description="Spanish interface", default=(self.selected_lang == "es")),
+                    discord.SelectOption(label=" Français", value="fr", description="French interface", default=(self.selected_lang == "fr")),
+                    discord.SelectOption(label=" Deutsch", value="de", description="German interface", default=(self.selected_lang == "de")),
+                    discord.SelectOption(label=" Русский", value="ru", description="Russian interface", default=(self.selected_lang == "ru")),
+                    discord.SelectOption(label=" Português", value="pt", description="Portuguese interface", default=(self.selected_lang == "pt")),
                 ]
             )
             select.callback = self._on_select_lang
@@ -633,16 +633,16 @@ class MultiStepSetupWizardView(discord.ui.View):
         # Step 3: Anti-Alt Suspicion Policy
         elif self.current_step == 3:
             select = discord.ui.Select(
-                placeholder="3️⃣ If an Alt Account is Detected...",
+                placeholder="3⃣ If an Alt Account is Detected...",
                 min_values=1,
                 max_values=1,
                 row=0,
                 options=[
-                    discord.SelectOption(label="⚠️ Quarantine Both Accounts", value="quarantine", description="Lock both suspected accounts in @Quarantined for admin review", default=(self.selected_antialt == "quarantine")),
-                    discord.SelectOption(label="📋 Log & Alert Only", value="log", description="Alert moderators in log channel but allow member to join", default=(self.selected_antialt == "log")),
-                    discord.SelectOption(label="👢 Auto-Kick New Alt", value="kick", description="Kick the new alternate account immediately", default=(self.selected_antialt == "kick")),
-                    discord.SelectOption(label="🔨 Auto-Ban New Alt", value="ban", description="Ban the new alternate account immediately", default=(self.selected_antialt == "ban")),
-                    discord.SelectOption(label="🤫 Silent / Do Nothing", value="ignore", description="Do not log or take any action on duplicate accounts", default=(self.selected_antialt == "ignore")),
+                    discord.SelectOption(label=" Quarantine Both Accounts", value="quarantine", description="Lock both suspected accounts in @Quarantined for admin review", default=(self.selected_antialt == "quarantine")),
+                    discord.SelectOption(label=" Log & Alert Only", value="log", description="Alert moderators in log channel but allow member to join", default=(self.selected_antialt == "log")),
+                    discord.SelectOption(label=" Auto-Kick New Alt", value="kick", description="Kick the new alternate account immediately", default=(self.selected_antialt == "kick")),
+                    discord.SelectOption(label=" Auto-Ban New Alt", value="ban", description="Ban the new alternate account immediately", default=(self.selected_antialt == "ban")),
+                    discord.SelectOption(label=" Silent / Do Nothing", value="ignore", description="Do not log or take any action on duplicate accounts", default=(self.selected_antialt == "ignore")),
                 ]
             )
             select.callback = self._on_select_antialt
@@ -652,7 +652,7 @@ class MultiStepSetupWizardView(discord.ui.View):
         elif self.current_step == 4:
             chan_select = discord.ui.ChannelSelect(
                 channel_types=[discord.ChannelType.text],
-                placeholder="📢 Select Verification Channel (or leave for auto #verify)...",
+                placeholder=" Select Verification Channel (or leave for auto #verify)...",
                 min_values=1,
                 max_values=1,
                 row=0
@@ -662,7 +662,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
             log_select = discord.ui.ChannelSelect(
                 channel_types=[discord.ChannelType.text],
-                placeholder="📋 Select Security Log Channel (or leave for auto #passkey-logs)...",
+                placeholder=" Select Security Log Channel (or leave for auto #passkey-logs)...",
                 min_values=1,
                 max_values=1,
                 row=1
@@ -673,23 +673,23 @@ class MultiStepSetupWizardView(discord.ui.View):
         # Step 5: Minimum Account Age & Review
         elif self.current_step == 5:
             select = discord.ui.Select(
-                placeholder="5️⃣ Select Minimum Account Age...",
+                placeholder="5⃣ Select Minimum Account Age...",
                 min_values=1,
                 max_values=1,
                 row=0,
                 options=[
-                    discord.SelectOption(label="🛡️ 0 Days (Disabled - Allow all accounts)", value="0", default=(self.selected_age == 0)),
-                    discord.SelectOption(label="🛡️ 3 Days (Block fresh raid accounts)", value="3", default=(self.selected_age == 3)),
-                    discord.SelectOption(label="🛡️ 7 Days (Recommended Security)", value="7", default=(self.selected_age == 7)),
-                    discord.SelectOption(label="🛡️ 14 Days (Strict Anti-Raid)", value="14", default=(self.selected_age == 14)),
-                    discord.SelectOption(label="🛡️ 30 Days (Maximum Security)", value="30", default=(self.selected_age == 30)),
+                    discord.SelectOption(label=" 0 Days (Disabled - Allow all accounts)", value="0", default=(self.selected_age == 0)),
+                    discord.SelectOption(label=" 3 Days (Block fresh raid accounts)", value="3", default=(self.selected_age == 3)),
+                    discord.SelectOption(label=" 7 Days (Recommended Security)", value="7", default=(self.selected_age == 7)),
+                    discord.SelectOption(label=" 14 Days (Strict Anti-Raid)", value="14", default=(self.selected_age == 14)),
+                    discord.SelectOption(label=" 30 Days (Maximum Security)", value="30", default=(self.selected_age == 30)),
                 ]
             )
             select.callback = self._on_select_age
             self.add_item(select)
 
         # Navigation row: < and > buttons
-        btn_prev = discord.ui.Button(label="Previous", style=discord.ButtonStyle.secondary, emoji="◀️", row=2, disabled=(self.current_step == 1))
+        btn_prev = discord.ui.Button(label="Previous", style=discord.ButtonStyle.secondary, emoji="", row=2, disabled=(self.current_step == 1))
         btn_prev.callback = self._on_prev
         self.add_item(btn_prev)
 
@@ -697,11 +697,11 @@ class MultiStepSetupWizardView(discord.ui.View):
         self.add_item(btn_indicator)
 
         if self.current_step < self.total_steps:
-            btn_next = discord.ui.Button(label="Next", style=discord.ButtonStyle.primary, emoji="▶️", row=2)
+            btn_next = discord.ui.Button(label="Next", style=discord.ButtonStyle.primary, emoji="", row=2)
             btn_next.callback = self._on_next
             self.add_item(btn_next)
         else:
-            btn_deploy = discord.ui.Button(label="Finish & Deploy Setup", style=discord.ButtonStyle.success, emoji="🚀", row=2)
+            btn_deploy = discord.ui.Button(label="Finish & Deploy Setup", style=discord.ButtonStyle.success, emoji="", row=2)
             btn_deploy.callback = self._on_deploy
             self.add_item(btn_deploy)
 
@@ -725,7 +725,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
         if self.current_step == 1:
             embed.description = (
-                "### 1️⃣ Choose Verification Engine\n"
+                "### 1⃣ Choose Verification Engine\n"
                 "Select one of the **9 advanced verification modes**:\n\n"
                 f"• **{verified_emoji} Web Portal**: Cloudflare Turnstile CAPTCHA + Anti-Alt IP.\n"
                 f"• **{biometric_emoji} Biometric Passkey**: Hardware Touch ID / Face ID / WebAuthn.\n"
@@ -736,31 +736,31 @@ class MultiStepSetupWizardView(discord.ui.View):
                 f"• **{shield_emoji} Math CAPTCHA**: Quick arithmetic modal challenge.\n"
                 f"• **{lock_emoji} Rules Agreement**: Server rules confirmation modal.\n"
                 f"• **{passkey_emoji} 1-Click Button**: Instant click access.\n\n"
-                f"👉 **Current Selection**: `{self.selected_mode.upper()}`"
+                f" **Current Selection**: `{self.selected_mode.upper()}`"
             )
         elif self.current_step == 2:
             embed.description = (
-                "### 2️⃣ Choose Default Server Language\n"
+                "### 2⃣ Choose Default Server Language\n"
                 "Select the default language for verification prompts, embeds, and emails:\n\n"
                 "• Supports 10 global languages (English default, Vietnamese, Japanese, Korean, etc.)\n\n"
-                f"👉 **Current Selection**: `{self.selected_lang.upper()}`"
+                f" **Current Selection**: `{self.selected_lang.upper()}`"
             )
         elif self.current_step == 3:
             embed.description = (
-                f"### 3️⃣ {alt_emoji} Anti-Alt Account Action Policy\n"
+                f"### 3⃣ {alt_emoji} Anti-Alt Account Action Policy\n"
                 "What should the bot do when a duplicate IP or Email is detected?\n\n"
-                "• **⚠️ Quarantine Both Accounts**: Assigns `@Quarantined` to freeze both accounts for admin review.\n"
-                "• **📋 Log & Alert Only**: Sends security audit log to staff, but allows join.\n"
-                "• **👢 Auto-Kick**: Instantly kicks the new alt account.\n"
-                "• **🔨 Auto-Ban**: Instantly bans the new alt account.\n"
-                "• **🤫 Silent Ignore**: Does not log or penalize.\n\n"
-                f"👉 **Current Selection**: `{self.selected_antialt.upper()}`"
+                "• ** Quarantine Both Accounts**: Assigns `@Quarantined` to freeze both accounts for admin review.\n"
+                "• ** Log & Alert Only**: Sends security audit log to staff, but allows join.\n"
+                "• ** Auto-Kick**: Instantly kicks the new alt account.\n"
+                "• ** Auto-Ban**: Instantly bans the new alt account.\n"
+                "• ** Silent Ignore**: Does not log or penalize.\n\n"
+                f" **Current Selection**: `{self.selected_antialt.upper()}`"
             )
         elif self.current_step == 4:
             v_text = self.selected_verify_chan.mention if self.selected_verify_chan else "`Auto-create #verify`"
             l_text = self.selected_log_chan.mention if self.selected_log_chan else "`Auto-create #passkey-logs`"
             embed.description = (
-                f"### 4️⃣ {shield_emoji} Channel Configuration\n"
+                f"### 4⃣ {shield_emoji} Channel Configuration\n"
                 "Select where members verify and where audit logs will be sent:\n\n"
                 f"• **Verification Channel**: {v_text}\n"
                 f"• **Security Log Channel**: {l_text}\n\n"
@@ -770,10 +770,10 @@ class MultiStepSetupWizardView(discord.ui.View):
             v_text = self.selected_verify_chan.mention if self.selected_verify_chan else "`Auto-create #verify`"
             l_text = self.selected_log_chan.mention if self.selected_log_chan else "`Auto-create #passkey-logs`"
             embed.description = (
-                f"### 5️⃣ {shield_emoji} Minimum Account Age & Ready to Deploy\n"
+                f"### 5⃣ {shield_emoji} Minimum Account Age & Ready to Deploy\n"
                 "Filter out newly created raid accounts under a certain age:\n\n"
                 f"• **Account Age**: `{self.selected_age} days`\n\n"
-                "📋 **Configuration Summary**:\n"
+                " **Configuration Summary**:\n"
                 f"• **Method**: `{self.selected_mode.upper()}`\n"
                 f"• **Language**: `{self.selected_lang.upper()}`\n"
                 f"• **Anti-Alt Policy**: `{self.selected_antialt.upper()}`\n"
@@ -784,12 +784,12 @@ class MultiStepSetupWizardView(discord.ui.View):
                 f"Click **{passkey_emoji} Finish & Deploy Setup** to activate Passkey Gatekeeper!"
             )
 
-        embed.set_footer(text="Use ◀️ and ▶️ buttons to navigate between steps • Passkey")
+        embed.set_footer(text="Use  and  buttons to navigate between steps • Passkey")
         return embed
 
     async def _on_select_mode(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
             return
         self.selected_mode = interaction.data["values"][0]
         self._build_step_components()
@@ -797,7 +797,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_select_lang(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
             return
         self.selected_lang = interaction.data["values"][0]
         self._build_step_components()
@@ -805,7 +805,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_select_antialt(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
             return
         self.selected_antialt = interaction.data["values"][0]
         self._build_step_components()
@@ -813,7 +813,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_select_verify_chan(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
             return
         chan_id = interaction.data["values"][0]
         self.selected_verify_chan = self.guild.get_channel(int(chan_id))
@@ -822,7 +822,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_select_log_chan(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
             return
         chan_id = interaction.data["values"][0]
         self.selected_log_chan = self.guild.get_channel(int(chan_id))
@@ -831,7 +831,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_select_age(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
             return
         self.selected_age = int(interaction.data["values"][0])
         self._build_step_components()
@@ -839,7 +839,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_prev(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
             return
         if self.current_step > 1:
             self.current_step -= 1
@@ -848,7 +848,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_next(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who started setup can interact.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who started setup can interact.", ephemeral=True)
             return
         if self.current_step < self.total_steps:
             self.current_step += 1
@@ -857,7 +857,7 @@ class MultiStepSetupWizardView(discord.ui.View):
 
     async def _on_deploy(self, interaction: discord.Interaction):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who started setup can deploy.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who started setup can deploy.", ephemeral=True)
             return
 
         await interaction.response.defer()
@@ -873,7 +873,7 @@ class MultiStepSetupWizardView(discord.ui.View):
                     reason="[Passkey Setup] Created Verified Member Role"
                 )
             except Exception as e:
-                await interaction.followup.send(f"❌ Failed to create `@Verified` role: {e}")
+                await interaction.followup.send(f" Failed to create `@Verified` role: {e}")
                 return
 
         # 2. Setup #verify channel
@@ -892,7 +892,7 @@ class MultiStepSetupWizardView(discord.ui.View):
                     reason="[Passkey Setup] Created Verification Gateway Channel"
                 )
             except Exception as e:
-                await interaction.followup.send(f"❌ Failed to create `#verify` channel: {e}")
+                await interaction.followup.send(f" Failed to create `#verify` channel: {e}")
                 return
         else:
             # Ensure bot has explicit permission to post in existing channel
@@ -999,14 +999,14 @@ def render_settings_embed(guild: discord.Guild, cfg: dict) -> discord.Embed:
     antialt_act = str(cfg.get("antialt_action", "quarantine")).upper()
     min_age = cfg.get("min_age_days", 0)
 
-    spam_st = "🟢 ON" if cfg.get("automod_spam", 1) else "🔴 OFF"
-    inv_st = "🟢 ON" if cfg.get("automod_invites", 1) else "🔴 OFF"
-    phish_st = "🟢 ON" if cfg.get("automod_phishing", 1) else "🔴 OFF"
-    ment_st = "🟢 ON" if cfg.get("automod_mentions", 1) else "🔴 OFF"
-    alt_st = "🟢 ON" if cfg.get("antialt_enabled", 1) else "🔴 OFF"
+    spam_st = " ON" if cfg.get("automod_spam", 1) else " OFF"
+    inv_st = " ON" if cfg.get("automod_invites", 1) else " OFF"
+    phish_st = " ON" if cfg.get("automod_phishing", 1) else " OFF"
+    ment_st = " ON" if cfg.get("automod_mentions", 1) else " OFF"
+    alt_st = " ON" if cfg.get("antialt_enabled", 1) else " OFF"
 
     embed = discord.Embed(
-        title=f"⚙️ Passkey Server Settings — {guild.name}",
+        title=f" Passkey Server Settings — {guild.name}",
         description="Master control dashboard for all security, verification, and defense settings.",
         color=0x6366F1,
         timestamp=datetime.datetime.now(datetime.timezone.utc)
@@ -1015,7 +1015,7 @@ def render_settings_embed(guild: discord.Guild, cfg: dict) -> discord.Embed:
         embed.set_thumbnail(url=guild.icon.url)
 
     embed.add_field(
-        name="🔑 Verification & Gatekeeper",
+        name=" Verification & Gatekeeper",
         value=(
             f"• **Method**: `{mode}`\n"
             f"• **Role**: {verified_role.mention if verified_role else '`Not Set`'}\n"
@@ -1029,7 +1029,7 @@ def render_settings_embed(guild: discord.Guild, cfg: dict) -> discord.Embed:
     )
 
     embed.add_field(
-        name="🛡️ AutoMod & Shield Defenses",
+        name=" AutoMod & Shield Defenses",
         value=(
             f"• **Anti-Spam**: {spam_st}\n"
             f"• **Anti-Invite**: {inv_st}\n"
@@ -1041,7 +1041,7 @@ def render_settings_embed(guild: discord.Guild, cfg: dict) -> discord.Embed:
     )
 
     embed.add_field(
-        name="📋 Audit & Logs",
+        name=" Audit & Logs",
         value=(
             f"• **Log Channel**: {log_channel.mention if log_channel else '`Not Set`'}\n"
             f"• **Database**: `Turso Cloud SQLite (Tokyo)`\n"
@@ -1068,23 +1068,23 @@ class ServerSettingsView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=self)
 
     @discord.ui.select(
-        placeholder="🔑 Change Verification Mode (9 Modes)...",
+        placeholder=" Change Verification Mode (9 Modes)...",
         row=0,
         options=[
-            discord.SelectOption(label="🌐 Web Portal (Cloudflare Turnstile)", value="web", description="Browser challenge with Cloudflare Turnstile"),
-            discord.SelectOption(label="📱 Biometric Passkey (Touch ID / Face ID)", value="biometric", description="Hardware Passkey biometric authentication"),
-            discord.SelectOption(label="✉️ Email OTP", value="email", description="6-digit verification code sent to member email"),
-            discord.SelectOption(label="🖼️ In-Discord Image CAPTCHA", value="image_captcha", description="Distorted security image challenge in Discord"),
-            discord.SelectOption(label="🎮 Emoji Sequence Pattern", value="pattern", description="3-symbol sequence button matching challenge"),
-            discord.SelectOption(label="🔗 Social Connection Check", value="social", description="Requires linked Steam, GitHub, YouTube, etc."),
-            discord.SelectOption(label="🔢 Math CAPTCHA Modal", value="captcha", description="Interactive math challenge pop-up"),
-            discord.SelectOption(label="📝 Server Rules Quiz", value="rules", description="Requires typing 'I AGREE' to server rules"),
-            discord.SelectOption(label="⚡ Direct 1-Click Button", value="button", description="Instant verification inside Discord"),
+            discord.SelectOption(label=" Web Portal (Cloudflare Turnstile)", value="web", description="Browser challenge with Cloudflare Turnstile"),
+            discord.SelectOption(label=" Biometric Passkey (Touch ID / Face ID)", value="biometric", description="Hardware Passkey biometric authentication"),
+            discord.SelectOption(label=" Email OTP", value="email", description="6-digit verification code sent to member email"),
+            discord.SelectOption(label=" In-Discord Image CAPTCHA", value="image_captcha", description="Distorted security image challenge in Discord"),
+            discord.SelectOption(label=" Emoji Sequence Pattern", value="pattern", description="3-symbol sequence button matching challenge"),
+            discord.SelectOption(label=" Social Connection Check", value="social", description="Requires linked Steam, GitHub, YouTube, etc."),
+            discord.SelectOption(label=" Math CAPTCHA Modal", value="captcha", description="Interactive math challenge pop-up"),
+            discord.SelectOption(label=" Server Rules Quiz", value="rules", description="Requires typing 'I AGREE' to server rules"),
+            discord.SelectOption(label=" Direct 1-Click Button", value="button", description="Instant verification inside Discord"),
         ]
     )
     async def sel_mode(self, interaction: discord.Interaction, select: discord.ui.Select):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who opened the settings can modify them.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who opened the settings can modify them.", ephemeral=True)
             return
         mode = select.values[0]
         if self.bot.db:
@@ -1092,74 +1092,74 @@ class ServerSettingsView(discord.ui.View):
         await self._update_view(interaction)
 
     @discord.ui.select(
-        placeholder="🌐 Change Server Language...",
+        placeholder=" Change Server Language...",
         row=1,
         options=[
-            discord.SelectOption(label="🇬🇧 English", value="en", description="Default English"),
-            discord.SelectOption(label="🇻🇳 Tiếng Việt", value="vi", description="Vietnamese interface"),
-            discord.SelectOption(label="🇯🇵 日本語", value="ja", description="Japanese interface"),
-            discord.SelectOption(label="🇰🇷 한국어", value="ko", description="Korean interface"),
-            discord.SelectOption(label="🇨🇳 简体中文", value="zh", description="Chinese interface"),
-            discord.SelectOption(label="🇪🇸 Español", value="es", description="Spanish interface"),
-            discord.SelectOption(label="🇫🇷 Français", value="fr", description="French interface"),
-            discord.SelectOption(label="🇩🇪 Deutsch", value="de", description="German interface"),
-            discord.SelectOption(label="🇷🇺 Русский", value="ru", description="Russian interface"),
-            discord.SelectOption(label="🇧🇷 Português", value="pt", description="Portuguese interface"),
+            discord.SelectOption(label=" English", value="en", description="Default English"),
+            discord.SelectOption(label=" Tiếng Việt", value="vi", description="Vietnamese interface"),
+            discord.SelectOption(label=" 日本語", value="ja", description="Japanese interface"),
+            discord.SelectOption(label=" 한국어", value="ko", description="Korean interface"),
+            discord.SelectOption(label=" 简体中文", value="zh", description="Chinese interface"),
+            discord.SelectOption(label=" Español", value="es", description="Spanish interface"),
+            discord.SelectOption(label=" Français", value="fr", description="French interface"),
+            discord.SelectOption(label=" Deutsch", value="de", description="German interface"),
+            discord.SelectOption(label=" Русский", value="ru", description="Russian interface"),
+            discord.SelectOption(label=" Português", value="pt", description="Portuguese interface"),
         ]
     )
     async def sel_lang(self, interaction: discord.Interaction, select: discord.ui.Select):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who opened the settings can modify them.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who opened the settings can modify them.", ephemeral=True)
             return
         lang = select.values[0]
         if self.bot.db:
             await self.bot.db.set_guild_config(self.guild.id, "language", lang)
         await self._update_view(interaction)
 
-    @discord.ui.button(label="Spam Shield", style=discord.ButtonStyle.secondary, emoji="🛡️", row=2)
+    @discord.ui.button(label="Spam Shield", style=discord.ButtonStyle.secondary, emoji="", row=2)
     async def btn_spam(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who opened settings can toggle this.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who opened settings can toggle this.", ephemeral=True)
             return
         new_val = 0 if self.cfg.get("automod_spam", 1) else 1
         if self.bot.db:
             await self.bot.db.set_guild_config(self.guild.id, "automod_spam", new_val)
         await self._update_view(interaction)
 
-    @discord.ui.button(label="Invite Shield", style=discord.ButtonStyle.secondary, emoji="🔗", row=2)
+    @discord.ui.button(label="Invite Shield", style=discord.ButtonStyle.secondary, emoji="", row=2)
     async def btn_invite(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who opened settings can toggle this.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who opened settings can toggle this.", ephemeral=True)
             return
         new_val = 0 if self.cfg.get("automod_invites", 1) else 1
         if self.bot.db:
             await self.bot.db.set_guild_config(self.guild.id, "automod_invites", new_val)
         await self._update_view(interaction)
 
-    @discord.ui.button(label="Phishing Shield", style=discord.ButtonStyle.secondary, emoji="🎣", row=2)
+    @discord.ui.button(label="Phishing Shield", style=discord.ButtonStyle.secondary, emoji="", row=2)
     async def btn_phishing(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who opened settings can toggle this.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who opened settings can toggle this.", ephemeral=True)
             return
         new_val = 0 if self.cfg.get("automod_phishing", 1) else 1
         if self.bot.db:
             await self.bot.db.set_guild_config(self.guild.id, "automod_phishing", new_val)
         await self._update_view(interaction)
 
-    @discord.ui.button(label="Anti-Alt Shield", style=discord.ButtonStyle.secondary, emoji="👥", row=2)
+    @discord.ui.button(label="Anti-Alt Shield", style=discord.ButtonStyle.secondary, emoji="", row=2)
     async def btn_alt(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who opened settings can toggle this.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who opened settings can toggle this.", ephemeral=True)
             return
         new_val = 0 if self.cfg.get("antialt_enabled", 1) else 1
         if self.bot.db:
             await self.bot.db.set_guild_config(self.guild.id, "antialt_enabled", new_val)
         await self._update_view(interaction)
 
-    @discord.ui.button(label="🧙 Setup Wizard", style=discord.ButtonStyle.primary, emoji="✨", row=3)
+    @discord.ui.button(label=" Setup Wizard", style=discord.ButtonStyle.primary, emoji="", row=3)
     async def btn_wizard(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author.id:
-            await interaction.response.send_message("❌ Only the admin who opened settings can launch the wizard.", ephemeral=True)
+            await interaction.response.send_message(" Only the admin who opened settings can launch the wizard.", ephemeral=True)
             return
         wizard_view = MultiStepSetupWizardView(self.bot, self.guild, self.author)
         await interaction.response.send_message(embed=wizard_view.get_step_embed(), view=wizard_view, ephemeral=True)
@@ -1179,7 +1179,7 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
     @commands.has_permissions(administrator=True)
     @commands.bot_has_permissions(manage_roles=True, manage_channels=True)
     async def setup_command(self, ctx: commands.Context):
-        """Interactive step-by-step Setup Wizard with pagination (◀️ Previous / ▶️ Next)."""
+        """Interactive step-by-step Setup Wizard with pagination ( Previous /  Next)."""
         wizard_view = MultiStepSetupWizardView(self.bot, ctx.guild, ctx.author)
         await ctx.send(embed=wizard_view.get_step_embed(), view=wizard_view)
 
@@ -1199,28 +1199,28 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
     @commands.has_permissions(administrator=True)
     @app_commands.describe(mode="Choose verification mode")
     @app_commands.choices(mode=[
-        app_commands.Choice(name="🌐 Web Portal (Cloudflare Turnstile)", value="web"),
-        app_commands.Choice(name="📱 Biometric Passkey (Touch ID / Face ID)", value="biometric"),
-        app_commands.Choice(name="✉️ Email OTP (Direct Code)", value="email"),
-        app_commands.Choice(name="🖼️ In-Discord Image CAPTCHA", value="image_captcha"),
-        app_commands.Choice(name="🎮 Emoji Sequence Pattern", value="pattern"),
-        app_commands.Choice(name="🔗 Social Connection Check", value="social"),
-        app_commands.Choice(name="🔢 Interactive Math CAPTCHA", value="captcha"),
-        app_commands.Choice(name="📝 Server Rules Quiz", value="rules"),
-        app_commands.Choice(name="⚡ Direct 1-Click Button", value="button"),
+        app_commands.Choice(name=" Web Portal (Cloudflare Turnstile)", value="web"),
+        app_commands.Choice(name=" Biometric Passkey (Touch ID / Face ID)", value="biometric"),
+        app_commands.Choice(name=" Email OTP (Direct Code)", value="email"),
+        app_commands.Choice(name=" In-Discord Image CAPTCHA", value="image_captcha"),
+        app_commands.Choice(name=" Emoji Sequence Pattern", value="pattern"),
+        app_commands.Choice(name=" Social Connection Check", value="social"),
+        app_commands.Choice(name=" Interactive Math CAPTCHA", value="captcha"),
+        app_commands.Choice(name=" Server Rules Quiz", value="rules"),
+        app_commands.Choice(name=" Direct 1-Click Button", value="button"),
     ])
     async def set_mode(self, ctx: commands.Context, mode: str):
         """Change the server verification method (9 modes available)."""
         mode = mode.lower()
         valid_modes = ["web", "biometric", "email", "image_captcha", "pattern", "social", "captcha", "rules", "button"]
         if mode not in valid_modes:
-            await ctx.send(f"❌ Invalid mode. Choose from: `{', '.join(valid_modes)}`", ephemeral=True)
+            await ctx.send(f" Invalid mode. Choose from: `{', '.join(valid_modes)}`", ephemeral=True)
             return
 
         if self.bot.db:
             await self.bot.db.set_guild_config(ctx.guild.id, "verify_mode", mode)
 
-        await ctx.send(f"🛡️ **Verification mode updated to:** `{mode.upper()}`", ephemeral=True)
+        await ctx.send(f" **Verification mode updated to:** `{mode.upper()}`", ephemeral=True)
 
     @commands.hybrid_command(name="setlog")
     @commands.has_permissions(administrator=True)
@@ -1229,7 +1229,7 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
         """Set the log channel for verification and security audit logs."""
         if self.bot.db:
             await self.bot.db.set_guild_config(ctx.guild.id, "log_channel_id", str(channel.id))
-        await ctx.send(f"📋 **Security log channel set to:** {channel.mention}", ephemeral=True)
+        await ctx.send(f" **Security log channel set to:** {channel.mention}", ephemeral=True)
 
     @commands.hybrid_command(name="minage")
     @commands.has_permissions(administrator=True)
@@ -1237,60 +1237,60 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
     async def min_age(self, ctx: commands.Context, days: int):
         """Set minimum Discord account age in days required to verify."""
         if days < 0:
-            await ctx.send("❌ Days must be 0 or greater.", ephemeral=True)
+            await ctx.send(" Days must be 0 or greater.", ephemeral=True)
             return
 
         if self.bot.db:
             await self.bot.db.set_guild_config(ctx.guild.id, "min_age_days", days)
 
         status = f"**{days} days**" if days > 0 else "**Disabled (0 days)**"
-        await ctx.send(f"🛡️ **Minimum account age required for verification is now:** {status}", ephemeral=True)
+        await ctx.send(f" **Minimum account age required for verification is now:** {status}", ephemeral=True)
 
     @commands.hybrid_command(name="setlang", aliases=["language", "setlanguage"])
     @commands.has_permissions(administrator=True)
     @app_commands.describe(lang="Choose system language for verification emails and bot messages")
     @app_commands.choices(lang=[
-        app_commands.Choice(name="🇬🇧 English (Default)", value="en"),
-        app_commands.Choice(name="🇻🇳 Tiếng Việt (Vietnamese)", value="vi"),
-        app_commands.Choice(name="🇯🇵 日本語 (Japanese)", value="ja"),
-        app_commands.Choice(name="🇰🇷 한국어 (Korean)", value="ko"),
-        app_commands.Choice(name="🇨🇳 简体中文 (Chinese)", value="zh"),
-        app_commands.Choice(name="🇪🇸 Español (Spanish)", value="es"),
-        app_commands.Choice(name="🇫🇷 Français (French)", value="fr"),
-        app_commands.Choice(name="🇩🇪 Deutsch (German)", value="de"),
-        app_commands.Choice(name="🇷🇺 Русский (Russian)", value="ru"),
-        app_commands.Choice(name="🇧🇷 Português (Portuguese)", value="pt"),
+        app_commands.Choice(name=" English (Default)", value="en"),
+        app_commands.Choice(name=" Tiếng Việt (Vietnamese)", value="vi"),
+        app_commands.Choice(name=" 日本語 (Japanese)", value="ja"),
+        app_commands.Choice(name=" 한국어 (Korean)", value="ko"),
+        app_commands.Choice(name=" 简体中文 (Chinese)", value="zh"),
+        app_commands.Choice(name=" Español (Spanish)", value="es"),
+        app_commands.Choice(name=" Français (French)", value="fr"),
+        app_commands.Choice(name=" Deutsch (German)", value="de"),
+        app_commands.Choice(name=" Русский (Russian)", value="ru"),
+        app_commands.Choice(name=" Português (Portuguese)", value="pt"),
     ])
     async def set_language(self, ctx: commands.Context, lang: str = "en"):
         """Change the server language for verification emails and bot messages (English default)."""
         lang = lang.lower().strip()
         lang_names = {
-            "en": "🇬🇧 English (Default)",
-            "vi": "🇻🇳 Tiếng Việt",
-            "ja": "🇯🇵 日本語",
-            "ko": "🇰🇷 한국어",
-            "zh": "🇨🇳 简体中文",
-            "es": "🇪🇸 Español",
-            "fr": "🇫🇷 Français",
-            "de": "🇩🇪 Deutsch",
-            "ru": "🇷🇺 Русский",
-            "pt": "🇧🇷 Português"
+            "en": " English (Default)",
+            "vi": " Tiếng Việt",
+            "ja": " 日本語",
+            "ko": " 한국어",
+            "zh": " 简体中文",
+            "es": " Español",
+            "fr": " Français",
+            "de": " Deutsch",
+            "ru": " Русский",
+            "pt": " Português"
         }
         if lang not in lang_names:
-            await ctx.send(f"❌ Supported languages: {', '.join(lang_names.keys())}", ephemeral=True)
+            await ctx.send(f" Supported languages: {', '.join(lang_names.keys())}", ephemeral=True)
             return
 
         if self.bot.db:
             await self.bot.db.set_guild_config(ctx.guild.id, "language", lang)
 
-        await ctx.send(f"🌐 **Server language set to:** {lang_names[lang]}", ephemeral=True)
+        await ctx.send(f" **Server language set to:** {lang_names[lang]}", ephemeral=True)
 
     @commands.hybrid_command(name="verify")
     async def verify_cmd(self, ctx: commands.Context):
         """Request your verification session link or prompt."""
         guild = ctx.guild
         if not guild:
-            await ctx.send("❌ This command must be used in a server.", ephemeral=True)
+            await ctx.send(" This command must be used in a server.", ephemeral=True)
             return
 
         config = {}
@@ -1300,7 +1300,7 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
         mode = config.get("verify_mode", "web")
         if mode == "button":
             success, msg = await grant_verified_role(self.bot, guild, ctx.author, method="button")
-            await ctx.send(f"✅ {msg}" if success else f"❌ {msg}", ephemeral=True)
+            await ctx.send(f" {msg}" if success else f" {msg}", ephemeral=True)
             return
 
         token = f"pk_{secrets.token_hex(16)}"
@@ -1318,8 +1318,8 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
         lang = config.get("language", "en")
 
         embed = discord.Embed(
-            title="🔑 Passkey Verification",
-            description=f"Click the link below to complete verification for **{guild.name}**.\n\n⚠️ *You have up to 5 attempts to verify.*",
+            title=" Passkey Verification",
+            description=f"Click the link below to complete verification for **{guild.name}**.\n\n *You have up to 5 attempts to verify.*",
             color=0x6366F1
         )
         embed.set_footer(text="Passkey Gatekeeper • Zero-Trust Verification Network")
@@ -1327,7 +1327,7 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
             embed.set_thumbnail(url=guild.icon.url)
 
         view = discord.ui.View()
-        view.add_item(discord.ui.Button(label="Open Verification Portal", url=verify_url, style=discord.ButtonStyle.link, emoji="🌐"))
+        view.add_item(discord.ui.Button(label="Open Verification Portal", url=verify_url, style=discord.ButtonStyle.link, emoji=""))
         await ctx.send(embed=embed, view=view, ephemeral=True)
 
     @commands.hybrid_command(name="post_verify", aliases=["post-verify", "sendverify", "postverify"])
@@ -1347,7 +1347,7 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
         lang = config.get("language", "en")
 
         embed = discord.Embed(
-            title="🔑 Passkey Server Gatekeeper",
+            title=" Passkey Server Gatekeeper",
             description=(
                 f"Welcome to **{guild.name}**!\n\n"
                 "To prevent automated raid bots and maintain community safety, "
@@ -1367,9 +1367,9 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
             await target_channel.send(embed=embed, view=view)
             if self.bot.db:
                 await self.bot.db.set_guild_config(guild.id, "verify_channel_id", str(target_channel.id))
-            await ctx.send(f"✅ **Verification panel successfully posted into** {target_channel.mention}!", ephemeral=True)
+            await ctx.send(f" **Verification panel successfully posted into** {target_channel.mention}!", ephemeral=True)
         except Exception as e:
-            await ctx.send(f"❌ Failed to send embed to {target_channel.mention}: {e}", ephemeral=True)
+            await ctx.send(f" Failed to send embed to {target_channel.mention}: {e}", ephemeral=True)
 
     @commands.hybrid_command(name="reset_verifications", aliases=["wipe_verifications", "clear_verifications"])
     @commands.has_permissions(administrator=True)
@@ -1428,8 +1428,8 @@ class Verification(commands.Cog, name="Verification Gatekeeper"):
             title=f"{verified_emoji} Full Server Verification Reset",
             description=(
                 f"{shield_emoji} **Database Cleared:** Purged all verification logs, warnings, and IP/Email fingerprints for **{ctx.guild.name}**.\n"
-                f"👥 **Roles Stripped:** Removed `{verified_role.name if verified_role else 'Verified'}` from **{stripped_count} member(s)**.\n\n"
-                "✨ All members must now re-verify to regain server access."
+                f" **Roles Stripped:** Removed `{verified_role.name if verified_role else 'Verified'}` from **{stripped_count} member(s)**.\n\n"
+                " All members must now re-verify to regain server access."
             ),
             color=0x10B981
         )
